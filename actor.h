@@ -18,7 +18,7 @@ typedef struct actor {
     pthread_mutex_t mutex;
     pthread_t thread;
     void *state;
-    int condition;
+    volatile int condition;
     int status;
 } actor_t;
 

@@ -45,4 +45,5 @@ void free_queue(queue_t *queue) {
         queue->head = queue->head->next;
         free(tb_free);
     }
+    free(queue);
 }

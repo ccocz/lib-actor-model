@@ -4,6 +4,7 @@
 #include "actor.h"
 #include "queue.h"
 #include <signal.h>
+#include <stdio.h>
 
 list_t *actor_list; // volatile?
 pool_t *pool;
@@ -14,7 +15,7 @@ static void sig_handler(int signal) {
 //todo: return value
 int actor_system_create(actor_id_t *actor, role_t *const role) {
     actor_t *root = new_actor(role, ROOT_ID);
-    if (role == NULL) {
+    if (root == NULL) {
         return FAILURE;
     }
     actor_list = new_list(root);
@@ -31,8 +32,11 @@ int actor_system_create(actor_id_t *actor, role_t *const role) {
     }
     *actor = ROOT_ID;
     struct sigaction sa;
+    sigset_t mask;
+    sigemptyset(&mask);
     sa.sa_flags = 0;
     sa.sa_handler = sig_handler;
+    sa.sa_mask = mask;
     if (sigaction(SIGINT, &sa, NULL) == -1) {
         return FAILURE;
     }
@@ -40,6 +44,7 @@ int actor_system_create(actor_id_t *actor, role_t *const role) {
 }
 
 void actor_system_join(actor_id_t actor) {
+    // non existing actor id
     pthread_mutex_lock(&pool->alive_mutex);
     pool->keep_alive = FALSE;
     pthread_mutex_unlock(&pool->alive_mutex);
@@ -53,10 +58,15 @@ int send_message(actor_id_t actor, message_t message) {
     }
     pthread_mutex_lock(&actor_ptr->mutex);
     if (actor_ptr->status == DEAD) {
+#ifdef DEBUG
+        fprintf(stderr, "DEAD DEAD DEAD");
+        fflush(stderr);
+#endif
         pthread_mutex_unlock(&actor_ptr->mutex);
         return ACTOR_NOT_ALIVE_ERR;
     }
     push(actor_ptr->mailbox, message);
+    // don't receive if not aplicable
     pthread_mutex_unlock(&actor_ptr->mutex);
     pthread_mutex_lock(&pool->mutex);
     pool->work_cond_val = TRUE;

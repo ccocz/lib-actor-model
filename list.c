@@ -1,4 +1,5 @@
 #include "list.h"
+#include <stdio.h>
 
 list_t *new_list(actor_t *root) {
     list_t *list = malloc(sizeof(list_t));
@@ -19,7 +20,7 @@ list_t *new_list(actor_t *root) {
 actor_t *find_actor(list_t *list, actor_id_t id) {
     pthread_mutex_lock(&list->mutex);
     actor_t *actor = NULL;
-    if (id <= (long)list->pos) {
+    if (id < (long)list->pos) {
         actor = list->start[id];
     }
     pthread_mutex_unlock(&list->mutex);
@@ -30,7 +31,7 @@ actor_id_t add_actor(list_t *list, role_t *role) {
     pthread_mutex_lock(&list->mutex);
     if (list->pos == list->size) {
         list->size *= 2;
-        list->start = realloc(list->start, list->size);
+        list->start = realloc(list->start, list->size * sizeof(actor_t*)); //todo check
     }
     actor_id_t id = list->pos++;
     list->start[id] = new_actor(role, id);
@@ -40,13 +41,25 @@ actor_id_t add_actor(list_t *list, role_t *role) {
 
 actor_t *find_actor_by_thread(list_t *list, pthread_t thread) {
     //watch for lock
+#ifdef DEBUG
+    fprintf(stderr, "%lu waiting for list mutex\n", pthread_self());
+#endif
     pthread_mutex_lock(&list->mutex);
+#ifdef DEBUG
+    fprintf(stderr, "%lu got list mutex\n", pthread_self());
+#endif
     for (size_t i = 0; i < list->pos; i++) {
         if (list->start[i]->condition == OPERATED
-            && pthread_equal(thread, list->start[i]->thread) == 0) {
+            && pthread_equal(thread, list->start[i]->thread)) {
+            pthread_mutex_unlock(&list->mutex);
             return list->start[i];
         }
     }
+    pthread_mutex_unlock(&list->mutex);
+#ifdef DEBUG
+    fprintf(stderr, "not found!!!\n");
+    fflush(stderr);
+#endif
     return NULL;
 }
 

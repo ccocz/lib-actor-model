@@ -15,9 +15,9 @@ typedef struct pool {
     pthread_mutex_t cnt_mutex;
     pthread_mutex_t alive_mutex;
     pthread_cond_t work_cond;
-    int work_cond_val;
-    int alive_cnt;
-    int keep_alive;
+    volatile int work_cond_val;
+    volatile int alive_cnt;
+    volatile int keep_alive;
 } pool_t;
 
 pool_t *new_pool(size_t size);
