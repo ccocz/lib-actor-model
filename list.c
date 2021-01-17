@@ -34,7 +34,8 @@ actor_id_t add_actor(list_t *list, role_t *role) {
         list->start = realloc(list->start, list->size * sizeof(actor_t*)); //todo check
     }
     actor_id_t id = list->pos++;
-    list->start[id] = new_actor(role, id);
+    actor_t *actor = new_actor(role, id);
+    list->start[id] = actor;
     pthread_mutex_unlock(&list->mutex);
     return id;
 }
@@ -42,11 +43,11 @@ actor_id_t add_actor(list_t *list, role_t *role) {
 actor_t *find_actor_by_thread(list_t *list, pthread_t thread) {
     //watch for lock
 #ifdef DEBUG
-    fprintf(stderr, "%lu waiting for list mutex\n", pthread_self());
+    fprintf(stderr, "%lu waiting for list mutex_cond\n", pthread_self());
 #endif
     pthread_mutex_lock(&list->mutex);
 #ifdef DEBUG
-    fprintf(stderr, "%lu got list mutex\n", pthread_self());
+    fprintf(stderr, "%lu got list mutex_cond\n", pthread_self());
 #endif
     for (size_t i = 0; i < list->pos; i++) {
         if (list->start[i]->condition == OPERATED

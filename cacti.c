@@ -45,9 +45,9 @@ int actor_system_create(actor_id_t *actor, role_t *const role) {
 
 void actor_system_join(actor_id_t actor) {
     // non existing actor id
-    pthread_mutex_lock(&pool->alive_mutex);
+    pthread_mutex_lock(&pool->mutex);
     pool->keep_alive = FALSE;
-    pthread_mutex_unlock(&pool->alive_mutex);
+    pthread_mutex_unlock(&pool->mutex);
     destroy_pool(pool);
 }
 
@@ -68,10 +68,10 @@ int send_message(actor_id_t actor, message_t message) {
     push(actor_ptr->mailbox, message);
     // don't receive if not aplicable
     pthread_mutex_unlock(&actor_ptr->mutex);
-    pthread_mutex_lock(&pool->mutex);
+    pthread_mutex_lock(&pool->mutex_cond);
     pool->work_cond_val = TRUE;
     pthread_cond_broadcast(&pool->work_cond);
-    pthread_mutex_unlock(&pool->mutex);
+    pthread_mutex_unlock(&pool->mutex_cond);
     return SUCCESS;
 }
 
