@@ -10,7 +10,8 @@ list_t *actor_list; // volatile?
 pool_t *pool;
 
 static void sig_handler(int signal) {
-    actor_system_join(ROOT_ID);
+    printf("HAHAHA");
+    //actor_system_join(ROOT_ID);
 }
 //todo: return value
 int actor_system_create(actor_id_t *actor, role_t *const role) {
@@ -40,6 +41,9 @@ int actor_system_create(actor_id_t *actor, role_t *const role) {
     if (sigaction(SIGINT, &sa, NULL) == -1) {
         return FAILURE;
     }
+    if (sigaction(SIGTERM, &sa, NULL) == -1) {
+        return FAILURE;
+    }
     return SUCCESS;
 }
 
@@ -65,13 +69,15 @@ int send_message(actor_id_t actor, message_t message) {
         pthread_mutex_unlock(&actor_ptr->mutex);
         return ACTOR_NOT_ALIVE_ERR;
     }
-    push(actor_ptr->mailbox, message);
-    // don't receive if not aplicable
     pthread_mutex_unlock(&actor_ptr->mutex);
-    pthread_mutex_lock(&pool->mutex_cond);
+    pthread_mutex_lock(&actor_ptr->mailbox->mutex);
+    push(actor_ptr->mailbox, message);
+    pthread_mutex_unlock(&actor_ptr->mailbox->mutex);
+    // todo: don't receive if not aplicable
+    pthread_mutex_lock(&pool->mutex);
     pool->work_cond_val = TRUE;
     pthread_cond_broadcast(&pool->work_cond);
-    pthread_mutex_unlock(&pool->mutex_cond);
+    pthread_mutex_unlock(&pool->mutex);
     return SUCCESS;
 }
 

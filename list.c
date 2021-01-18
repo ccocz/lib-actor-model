@@ -49,11 +49,18 @@ actor_t *find_actor_by_thread(list_t *list, pthread_t thread) {
 #ifdef DEBUG
     fprintf(stderr, "%lu got list mutex_cond\n", pthread_self());
 #endif
+    int match = 0;
+    actor_t *actor = NULL;
     for (size_t i = 0; i < list->pos; i++) {
-        if (list->start[i]->condition == OPERATED
-            && pthread_equal(thread, list->start[i]->thread)) {
-            pthread_mutex_unlock(&list->mutex);
-            return list->start[i];
+        actor = list->start[i];
+        pthread_mutex_lock(&actor->mutex);
+        if (actor->condition == OPERATED
+            && pthread_equal(thread, actor->thread)) {
+            match = 1;
+        }
+        pthread_mutex_unlock(&actor->mutex);
+        if (match) {
+            break;
         }
     }
     pthread_mutex_unlock(&list->mutex);
@@ -61,12 +68,13 @@ actor_t *find_actor_by_thread(list_t *list, pthread_t thread) {
     fprintf(stderr, "not found!!!\n");
     fflush(stderr);
 #endif
-    return NULL;
+    return actor;
 }
 
 void free_list(list_t *list) {
     for (size_t i = 0; i < list->pos; i++) {
         pthread_mutex_destroy(&list->start[i]->mutex);
+        pthread_cond_destroy(&list->start[i]->worker);
         free_queue(list->start[i]->mailbox);
         free(list->start[i]);
     }

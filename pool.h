@@ -11,7 +11,6 @@ typedef struct pool {
     list_t *actor_list;
     pthread_t *threads;
     size_t size;
-    pthread_mutex_t mutex_cond;
     pthread_cond_t work_cond;
     pthread_mutex_t mutex;
     volatile int work_cond_val;

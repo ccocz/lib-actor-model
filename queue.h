@@ -12,6 +12,7 @@ typedef struct qnode{
 typedef struct queue{
     qnode_t *head;
     qnode_t *tail;
+    pthread_mutex_t mutex;
 } queue_t;
 
 queue_t *new_queue(void);

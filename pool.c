@@ -7,8 +7,6 @@
 static void *worker(void *);
 static void handle(actor_t *actor, message_t message, list_t *actor_list);
 
-volatile int glob = 0;
-
 pool_t *new_pool(size_t size) {
     pool_t *pool = malloc(sizeof(pool_t));
     if (pool == NULL) {
@@ -18,8 +16,6 @@ pool_t *new_pool(size_t size) {
     pool->keep_alive = TRUE;
     pool->alive_cnt = 0;
     pool->work_cond_val = FALSE;
-    pthread_mutex_init(&pool->mutex_cond, NULL);
-    //pthread_mutex_init(&pool->cnt_mutex, NULL);
     pthread_mutex_init(&pool->mutex, NULL);
     pthread_cond_init(&pool->work_cond, NULL);
     return pool;
@@ -58,25 +54,40 @@ static void *worker(void *data) {
         for (size_t i = 0; i < actor_list->pos; i++) {
             last_pos = (last_pos + 1) % actor_list->pos;
             actor = actor_list->start[last_pos];
-            if (actor->condition == OPERATED) { // todo: tmp
-                continue;
-            }
+            //if (actor->condition == OPERATED) { // todo: tmp
+                //continue;
+            //}
 #ifdef DEBUG
             fprintf(stderr, "%lu waiting for actor %lu\n", pthread_self(), actor->id);
             fflush(stderr);
 #endif
-            pthread_mutex_lock(&actor->mutex);
+            pthread_mutex_lock(&actor->mailbox->mutex); // one mutex
             if (!is_empty(actor->mailbox)) {
                 message = pop(actor->mailbox);
                 found = 1;
+                pthread_mutex_unlock(&actor->mailbox->mutex);
                 break;
             }
-            pthread_mutex_unlock(&actor->mutex);
+            pthread_mutex_unlock(&actor->mailbox->mutex);
+            //pthread_mutex_lock(&actor->mutex);
+            //if (!is_empty(actor->mailbox)) {
+                //message = pop(actor->mailbox);
+                //found = 1;
+                //break;
+            //}
+            //pthread_mutex_unlock(&actor->mutex);
         }
         pthread_mutex_unlock(&actor_list->mutex);
         if (found) {
-            handle(actor, message, actor_list);
+            pthread_mutex_lock(&actor->mutex);
+            while (actor->condition == OPERATED) {
+                pthread_cond_wait(&actor->worker, &actor->mutex);
+            }
+            actor->condition = OPERATED;
+            actor->thread = pthread_self();
             pthread_mutex_unlock(&actor->mutex);
+            handle(actor, message, actor_list);
+            //pthread_mutex_unlock(&actor->mutex);
 #ifdef DEBUG
             fprintf(stderr, "finished, thread = %lu\n", pthread_self());
             fflush(stderr);
@@ -89,16 +100,16 @@ static void *worker(void *data) {
             if (on_wait) {
                 break;
             }
-            pthread_mutex_lock(&pool->mutex_cond);
+            pthread_mutex_lock(&pool->mutex);
             while (pool->work_cond_val == FALSE) {
-                pthread_cond_wait(&pool->work_cond, &pool->mutex_cond);
+                pthread_cond_wait(&pool->work_cond, &pool->mutex);
             }
 #ifdef DEBUG
             fprintf(stderr, "exit %lu\n", pthread_self());
             fflush(stderr);
 #endif
             pool->work_cond_val = FALSE;
-            pthread_mutex_unlock(&pool->mutex_cond);
+            pthread_mutex_unlock(&pool->mutex);
         }
     }
     pthread_mutex_lock(&pool->mutex);
@@ -116,11 +127,11 @@ static void handle(actor_t *actor, message_t message, list_t *actor_list) {
     fprintf(stderr, "%lu handles, type = %lu, hell = %lu\n", pthread_self(), message.message_type, MSG_SPAWN);
     fflush(stderr);
 #endif
-    actor->condition = OPERATED;
-    actor->thread = pthread_self();
     switch (message.message_type) {
         case MSG_GODIE:
+            pthread_mutex_lock(&actor->mutex);
             actor->status = DEAD;
+            pthread_mutex_unlock(&actor->mutex);
             break;
         case MSG_SPAWN: {
             role_t *role = (role_t *) message.data;
@@ -148,9 +159,10 @@ static void handle(actor_t *actor, message_t message, list_t *actor_list) {
             actor->role->prompts[message.message_type]
             (&actor->state, message.nbytes, message.data);
     }
+    pthread_mutex_lock(&actor->mutex);
     actor->condition = IDLE;
-    //fprintf(stderr, "finito %lu\n", pthread_self());
-    //fflush(stderr);
+    pthread_cond_broadcast(&actor->worker);
+    pthread_mutex_unlock(&actor->mutex);
 }
 
 void destroy_pool(pool_t *pool) {
@@ -164,15 +176,17 @@ void destroy_pool(pool_t *pool) {
         //fflush(stderr);
 #endif
         if (alive_cnt > 0) {
-            pthread_mutex_lock(&pool->mutex_cond);
+            pthread_mutex_lock(&pool->mutex);
             pool->work_cond_val = TRUE;
             pthread_cond_broadcast(&pool->work_cond);
-            pthread_mutex_unlock(&pool->mutex_cond);
+            pthread_mutex_unlock(&pool->mutex);
         }
     } while (alive_cnt > 0);
     for (size_t i = 0; i < pool->size; i++) {
         pthread_join(pool->threads[i], NULL);
     }
+    pthread_mutex_destroy(&pool->mutex);
+    pthread_cond_destroy(&pool->work_cond);
     free_list(pool->actor_list);
     free(pool->threads);
     free(pool);

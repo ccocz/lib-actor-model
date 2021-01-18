@@ -16,10 +16,11 @@ typedef struct actor {
     role_t *role;
     queue_t *mailbox; //todo: size limit
     pthread_mutex_t mutex;
-    pthread_t thread;
+    pthread_cond_t worker;
     void *state;
+    volatile pthread_t thread;
     volatile int condition;
-    int status;
+    volatile int status;
 } actor_t;
 
 actor_t *new_actor(role_t *role, actor_id_t id);
