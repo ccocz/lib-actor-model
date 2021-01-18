@@ -103,8 +103,8 @@ static char *all_tests()
     //mu_run_test(spawn);
     while (1) {
         mu_run_test(spawn);
-        fprintf(stderr, "============\n");
-        fflush(stderr);
+        //fprintf(stderr, "============\n");
+        //fflush(stderr);
     }
 
     //mu_run_test(godie);
@@ -127,3 +127,4 @@ int main()
     return result != 0;
 }
 
+//orchestrates a pool of threads to drive all these actions completely transparently

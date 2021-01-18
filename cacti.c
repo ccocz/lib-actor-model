@@ -11,6 +11,7 @@ pool_t *pool;
 
 static void sig_handler(int signal) {
     printf("HAHAHA");
+    exit(1);
     //actor_system_join(ROOT_ID);
 }
 //todo: return value
