@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+//todo: does order matter
+
 #define MSG_FACTORIAL 1
 #define MSG_WAKE_PARENT 2
 #define NPROMTS 3
@@ -28,18 +30,14 @@ message_t get_message(message_type_t type, size_t nbytes, void* data) {
 }
 
 void hello(void **stateptr, size_t nbytes, void *data) {
-    *stateptr = malloc(sizeof(state_t));
     actor_id_t my_id = actor_id_self();
-    if (my_id != ROOT_ID) {
-        actor_id_t parent_id = (actor_id_t)data;
-        message_t message = get_message(MSG_WAKE_PARENT, sizeof(actor_id_t), (void *) my_id);
-        int ret = send_message(parent_id, message);
-        if (ret != SUCCESS) {
-            err("send message error ", ret);
-        }
+    actor_id_t parent_id = (actor_id_t)data;
+    message_t message = get_message(MSG_WAKE_PARENT, sizeof(actor_id_t), (void *) my_id);
+    int ret = send_message(parent_id, message);
+    if (ret != SUCCESS) {
+        err("send message error ", ret);
     }
 }
-
 
 void wait_child(void **stateptr, size_t nbytes, void *data) {
     actor_id_t send_to = (actor_id_t)data;
@@ -57,6 +55,7 @@ void wait_child(void **stateptr, size_t nbytes, void *data) {
 }
 
 void start_point(void **stateptr, size_t nbytes, void *data) {
+    *stateptr = malloc(sizeof(state_t));
     ans_t ans = *((ans_t*)data);
     if (ans.n == ans.k) {
         free(data);
@@ -84,16 +83,11 @@ void factorial(int n) {
     if (ret != SUCCESS) {
         err("system create error ", ret);
     }
-    message_t message = get_message(MSG_HELLO, sizeof(actor_id_t), (void*)root);
-    ret = send_message(root, message);
-    if (ret != SUCCESS) {
-        err("send message error ", ret);
-    }
     ans_t *ans = malloc(sizeof(ans_t));
     ans->k_fact = 1;
     ans->k = 0;
     ans->n = n;
-    message = get_message(MSG_FACTORIAL, sizeof(ans_t), ans);
+    message_t message = get_message(MSG_FACTORIAL, sizeof(ans_t), ans);
     ret = send_message(root, message);
     if (ret != SUCCESS) {
         err("send message error ", ret);
@@ -109,7 +103,8 @@ int main(){
     role->nprompts = NPROMTS;
     role->prompts = acts;
     factorial_role = role;
-    factorial(n);
-    free(role);
+    while (1) {
+        factorial(n);
+    }
 	return 0;
 }
