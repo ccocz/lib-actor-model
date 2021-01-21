@@ -10,9 +10,12 @@
 #define MSG_INFORM_ACTOR 2
 #define MSG_INFORM_ROOT 3
 #define MSG_START_SUM_OPERATION 4
+#define MSG_SUM_ONLY_ONE_COLUMN 5
 
 #define TRUE 1
 #define FALSE 0
+
+#define MILLIS 1000
 
 typedef struct cell {
     int value;
@@ -129,7 +132,7 @@ void sum_cell(void **stateptr, size_t nbytes, void *data) {
     ans_t *ans = (ans_t*)data;
     int row = ans->row;
     int column = actor_info->column;
-    usleep(1000 * grid[row][column].timeout);
+    usleep(MILLIS * grid[row][column].timeout);
     ans->sum += grid[row][column].value;
     if (actor_info->is_last) {
         row_sum[ans->row] = ans->sum;
@@ -147,6 +150,13 @@ void sum_cell(void **stateptr, size_t nbytes, void *data) {
     }
 }
 
+void sum_all(void **stateptr, size_t nbytes, void *data) {
+    for (int i = 0; i < rows; i++) {
+        usleep(MILLIS * grid[i][0].timeout);
+        row_sum[i] = grid[i][0].value;
+    }
+}
+
 void rows_sum(role_t *role) {
     actor_id_t root;
     int ret = actor_system_create(&root, role);
@@ -158,6 +168,13 @@ void rows_sum(role_t *role) {
         ret = send_message(root, message);
         if (ret != SUCCESS) {
             err("root couldn't create actor ", ret);
+        }
+    }
+    if (columns == 1) {
+        message = get_message(MSG_SUM_ONLY_ONE_COLUMN, 0, NULL);
+        ret = send_message(root, message);
+        if (ret != SUCCESS) {
+            err("root couldn't send message to himself ", ret);
         }
     }
     actor_system_join(root);
@@ -175,7 +192,7 @@ int main(){
         scanf("%d %d", &next.value, &next.timeout);
         grid[i / columns][i % columns] = next;
     }
-    act_t acts[] = {hello, wait_columnar, gather_info, wait_to_start, sum_cell};
+    act_t acts[] = {hello, wait_columnar, gather_info, wait_to_start, sum_cell, sum_all};
     role_t *role = malloc(sizeof(role_t));
     role->nprompts = NRPROMPTS;
     role->prompts = acts;
@@ -187,16 +204,5 @@ int main(){
     free(grid);
     free(row_sum);
     free(role);
-    //free
 	return 0;
 }
-/*
-2
-3
-1 200
-1 200
-12 200
-23 9
-3 11
-7 2
-*/

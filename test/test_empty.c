@@ -127,4 +127,4 @@ int main()
     return result != 0;
 }
 
-//orchestrates a pool of threads to drive all these actions completely transparently
+//orchestrates a pool of threads to drive all actions completely transparently
