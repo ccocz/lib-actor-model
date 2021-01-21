@@ -22,6 +22,7 @@ typedef struct cell {
 typedef struct actor_info {
     int column;
     int is_last;
+    int cnt_done;
     actor_id_t neighbour;
     actor_id_t root;
 } actor_info_t;
@@ -40,6 +41,7 @@ typedef struct ans {
 int rows;
 int columns;
 cell_t **grid;
+int *row_sum;
 
 static message_t get_message(message_type_t type, size_t nbytes, void* data) {
     message_t message;
@@ -76,6 +78,7 @@ void wait_columnar(void **stateptr, size_t nbytes, void *data) {
         root_info = *stateptr;
         root_info->last_column = columns - 1;
         root_info->last_actor = actor_id_self();
+        root_info->cnt_ready = 0;
     } else {
         root_info = *stateptr;
     }
@@ -85,6 +88,7 @@ void wait_columnar(void **stateptr, size_t nbytes, void *data) {
     actor_info->is_last = root_info->last_column == columns - 1 ? TRUE : FALSE;
     actor_info->neighbour = root_info->last_actor;
     actor_info->root = actor_id_self();
+    actor_info->cnt_done = 0;
     root_info->last_column--;
     root_info->last_actor = send_to;
     message_t message = get_message(MSG_INFORM_ACTOR, sizeof(actor_info_t), actor_info);
@@ -105,6 +109,7 @@ void wait_to_start(void **stateptr, size_t nbytes, void *data) {
         actor_info->neighbour = neighbor;
         actor_info->is_last = FALSE; // todo
         actor_info->column = 0;
+        actor_info->cnt_done = 0;
         *stateptr = actor_info;
         for (int i = 0; i < rows; i++) {
             ans_t *ans = malloc(sizeof(ans_t));
@@ -116,7 +121,6 @@ void wait_to_start(void **stateptr, size_t nbytes, void *data) {
                 err("couldn't send start row sum communication ", ret);
             }
         }
-
     }
 }
 
@@ -128,13 +132,18 @@ void sum_cell(void **stateptr, size_t nbytes, void *data) {
     usleep(1000 * grid[row][column].timeout);
     ans->sum += grid[row][column].value;
     if (actor_info->is_last) {
-        printf("row = %d, sum = %d\n", row, ans->sum);
+        row_sum[ans->row] = ans->sum;
+        free(ans);
     } else {
         message_t message = get_message(MSG_START_SUM_OPERATION, sizeof(ans_t), ans);
         int ret = send_message(actor_info->neighbour, message);
         if (ret != SUCCESS) {
             err("actor couldn't send sum to neighbor ", ret);
         }
+    }
+    actor_info->cnt_done++;
+    if (actor_info->cnt_done == rows) {
+        free(actor_info);
     }
 }
 
@@ -156,6 +165,7 @@ void rows_sum(role_t *role) {
 
 int main(){
     scanf("%d %d", &rows, &columns);
+    row_sum = malloc(sizeof(int) * rows); // todo ll
     grid = malloc(rows * sizeof(cell_t*));
     for (int i = 0; i < rows; i++) {
         grid[i] = malloc(sizeof(cell_t) * columns);
@@ -170,5 +180,23 @@ int main(){
     role->nprompts = NRPROMPTS;
     role->prompts = acts;
     rows_sum(role);
+    for (int i = 0; i < rows; i++) {
+        printf("%d\n", row_sum[i]);
+        free(grid[i]);
+    }
+    free(grid);
+    free(row_sum);
+    free(role);
+    //free
 	return 0;
 }
+/*
+2
+3
+1 200
+1 200
+12 200
+23 9
+3 11
+7 2
+*/
