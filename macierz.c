@@ -55,6 +55,8 @@ static message_t get_message(message_type_t type, size_t nbytes, void* data) {
 }
 
 void hello(void **stateptr, size_t nbytes, void *data) {
+    (void)stateptr;
+    (void)nbytes;
     actor_id_t my_id = actor_id_self();
     actor_id_t parent_id = (actor_id_t)data;
     message_t message = get_message(MSG_WAKE_ROOT, sizeof(actor_id_t), (void *) my_id);
@@ -65,6 +67,7 @@ void hello(void **stateptr, size_t nbytes, void *data) {
 }
 
 void gather_info(void **stateptr, size_t nbytes, void *data) {
+    (void)nbytes;
     actor_info_t *actor_info = (actor_info_t*)data;
     *stateptr = actor_info;
     message_t message = get_message(MSG_INFORM_ROOT, 0, NULL);
@@ -75,6 +78,7 @@ void gather_info(void **stateptr, size_t nbytes, void *data) {
 }
 
 void wait_columnar(void **stateptr, size_t nbytes, void *data) {
+    (void)nbytes;
     root_info_t *root_info;
     if (*stateptr == NULL) {
         *stateptr = malloc(sizeof(root_info_t));
@@ -102,6 +106,8 @@ void wait_columnar(void **stateptr, size_t nbytes, void *data) {
 }
 
 void wait_to_start(void **stateptr, size_t nbytes, void *data) {
+    (void)nbytes;
+    (void)data;
     root_info_t *root_info = *stateptr;
     root_info->cnt_ready++;
     if (root_info->cnt_ready == columns - 1) {
@@ -128,6 +134,7 @@ void wait_to_start(void **stateptr, size_t nbytes, void *data) {
 }
 
 void sum_cell(void **stateptr, size_t nbytes, void *data) {
+    (void)nbytes;
     actor_info_t *actor_info = *stateptr;
     ans_t *ans = (ans_t*)data;
     int row = ans->row;
@@ -151,6 +158,9 @@ void sum_cell(void **stateptr, size_t nbytes, void *data) {
 }
 
 void sum_all(void **stateptr, size_t nbytes, void *data) {
+    (void)stateptr;
+    (void)nbytes;
+    (void)data;
     for (int i = 0; i < rows; i++) {
         usleep(MILLIS * grid[i][0].timeout);
         row_sum[i] = grid[i][0].value;
