@@ -5,8 +5,10 @@
 
 //todo: does order matter
 
+//todo: fix ans copying
+
 #define MSG_FACTORIAL 1
-#define MSG_WAKE_PARENT 2
+#define MSG_WAKE_ROOT 2
 #define NPROMTS 3
 
 role_t *factorial_role;
@@ -21,7 +23,7 @@ typedef struct state {
     ans_t ans;
 } state_t;
 
-message_t get_message(message_type_t type, size_t nbytes, void* data) {
+static message_t get_message(message_type_t type, size_t nbytes, void* data) {
     message_t message;
     message.message_type = type;
     message.nbytes = nbytes;
@@ -32,7 +34,7 @@ message_t get_message(message_type_t type, size_t nbytes, void* data) {
 void hello(void **stateptr, size_t nbytes, void *data) {
     actor_id_t my_id = actor_id_self();
     actor_id_t parent_id = (actor_id_t)data;
-    message_t message = get_message(MSG_WAKE_PARENT, sizeof(actor_id_t), (void *) my_id);
+    message_t message = get_message(MSG_WAKE_ROOT, sizeof(actor_id_t), (void *) my_id);
     int ret = send_message(parent_id, message);
     if (ret != SUCCESS) {
         err("send message error ", ret);
@@ -96,8 +98,7 @@ void factorial(int n) {
 }
 
 int main(){
-    int n;
-    scanf("%d", &n);
+    int n = 1;
     act_t acts[] = {hello, start_point, wait_child};
     role_t *role = malloc(sizeof(role_t));
     role->nprompts = NPROMTS;
@@ -105,6 +106,7 @@ int main(){
     factorial_role = role;
     while (1) {
         factorial(n);
+        n = (n + 1) % 10;
     }
 	return 0;
 }
