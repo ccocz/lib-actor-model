@@ -16,7 +16,6 @@ typedef struct actor {
     role_t *role;
     queue_t *mailbox; //todo: size limit
     pthread_mutex_t mutex;
-    pthread_cond_t worker;
     void *state;
     volatile pthread_t thread;
     volatile int condition;

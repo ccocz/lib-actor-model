@@ -58,37 +58,50 @@ static void *worker(void *data) {
             //if (actor->condition == OPERATED) { // todo: tmp
                 //continue;
             //}
+
+
+
+            pthread_mutex_lock(&actor->mutex);
+            if (actor->condition == IDLE) {
+                if (!is_empty(actor->mailbox)) {
+                    message = pop(actor->mailbox);
+                    found = 1;
+                    break;
+                }
+            }
+            pthread_mutex_unlock(&actor->mutex);
+
+
+
 #ifdef DEBUG
             fprintf(stderr, "%lu waiting for actor %lu\n", pthread_self(), actor->id);
             fflush(stderr);
 #endif
-            pthread_mutex_lock(&actor->mailbox->mutex); // one mutex
-            if (!is_empty(actor->mailbox)) {
-                message = pop(actor->mailbox);
-                found = 1;
-                pthread_mutex_unlock(&actor->mailbox->mutex);
-                break;
-            }
-            pthread_mutex_unlock(&actor->mailbox->mutex);
-            //pthread_mutex_lock(&actor->mutex);
+
+            //pthread_mutex_lock(&actor->mailbox->mutex); // one mutex
             //if (!is_empty(actor->mailbox)) {
                 //message = pop(actor->mailbox);
                 //found = 1;
+                //pthread_mutex_unlock(&actor->mailbox->mutex);
                 //break;
             //}
-            //pthread_mutex_unlock(&actor->mutex);
+            //pthread_mutex_unlock(&actor->mailbox->mutex);
+
         }
         pthread_mutex_unlock(&actor_list->mutex);
         if (found) {
-            pthread_mutex_lock(&actor->mutex);
-            while (actor->condition == OPERATED) {
-                pthread_cond_wait(&actor->worker, &actor->mutex);
-            }
+
+            //pthread_mutex_lock(&actor->mutex);
+            //while (actor->condition == OPERATED) {
+                //pthread_cond_wait(&actor->worker, &actor->mutex);
+            //}
+
             actor->condition = OPERATED;
             actor->thread = pthread_self();
             pthread_mutex_unlock(&actor->mutex);
             handle(actor, message, pool);
-            //pthread_mutex_unlock(&actor->mutex);
+
+
 #ifdef DEBUG
             fprintf(stderr, "finished, thread = %lu\n", pthread_self());
             fflush(stderr);
@@ -135,11 +148,7 @@ static void handle(actor_t *actor, message_t message, pool_t *pool) {
             pthread_mutex_unlock(&actor->mutex);
             pthread_mutex_lock(&pool->mutex);
             pool->alive_actor_cnt--;
-            fprintf(stderr, "actor died = %d, cnt = %d\n", actor->id, pool->alive_actor_cnt);
-            fflush(stderr);
             if (pool->alive_actor_cnt == 0) {
-                fprintf(stderr, "all actors are dead");
-                fflush(stderr);
                 pool->keep_alive = FALSE;
             }
             pthread_mutex_unlock(&pool->mutex);
@@ -173,10 +182,18 @@ static void handle(actor_t *actor, message_t message, pool_t *pool) {
             actor->role->prompts[message.message_type]
             (&actor->state, message.nbytes, message.data);
     }
+    int empty_queue;
     pthread_mutex_lock(&actor->mutex);
     actor->condition = IDLE;
-    pthread_cond_broadcast(&actor->worker);
+    empty_queue = is_empty(actor->mailbox) ? TRUE : FALSE;
     pthread_mutex_unlock(&actor->mutex);
+    if (!empty_queue) {
+        pthread_mutex_lock(&pool->mutex);
+        pool->work_cond_val = TRUE;
+        pthread_cond_broadcast(&pool->work_cond);
+        pthread_mutex_unlock(&pool->mutex);
+    }
+    //pthread_cond_broadcast(&actor->worker);
 }
 
 void destroy_pool(pool_t *pool) {

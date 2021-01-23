@@ -50,9 +50,6 @@ int actor_system_create(actor_id_t *actor, role_t *const role) {
 
 void actor_system_join(actor_id_t actor) {
     // non existing actor id
-    //pthread_mutex_lock(&pool->mutex);
-    //pool->keep_alive = FALSE;
-    //pthread_mutex_unlock(&pool->mutex);
     if (pool != NULL ) {
         destroy_pool(pool);
         pool = NULL;
@@ -73,10 +70,8 @@ int send_message(actor_id_t actor, message_t message) {
         pthread_mutex_unlock(&actor_ptr->mutex);
         return ACTOR_NOT_ALIVE_ERR;
     }
-    pthread_mutex_unlock(&actor_ptr->mutex);
-    pthread_mutex_lock(&actor_ptr->mailbox->mutex);
     push(actor_ptr->mailbox, message);
-    pthread_mutex_unlock(&actor_ptr->mailbox->mutex);
+    pthread_mutex_unlock(&actor_ptr->mutex);
     // todo: don't receive if not aplicable
     pthread_mutex_lock(&pool->mutex);
     pool->work_cond_val = TRUE;

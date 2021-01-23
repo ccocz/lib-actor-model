@@ -10,7 +10,7 @@ queue_t *new_queue() {
     }
     queue->head = NULL;
     queue->tail = NULL;
-    pthread_mutex_init(&queue->mutex, NULL);
+    //pthread_mutex_init(&queue->mutex, NULL);
     return queue;
 }
 
@@ -46,6 +46,6 @@ void free_queue(queue_t *queue) {
         queue->head = queue->head->next;
         free(tb_free);
     }
-    pthread_mutex_destroy(&queue->mutex);
+    //pthread_mutex_destroy(&queue->mutex);
     free(queue);
 }

@@ -31,9 +31,9 @@ void my_hello(void **stateptr, size_t nbytes, void *data) {
     message.nbytes = 0;
     message.message_type = MSG_GODIE;
     send_message(actor_id_self(), message);
-    //actor_id_t id = (actor_id_t)data;
-    //fprintf(stderr, "%lu says hello to %lu\n", id, actor_id_self());
-    //fflush(stderr);
+    actor_id_t id = (actor_id_t)data;
+    fprintf(stderr, "%lu says hello to %lu\n", id, actor_id_self());
+    fflush(stderr);
 }
 
 static char *hello() {
@@ -79,6 +79,10 @@ static char *spawn() {
     send_message(root, message);
     send_message(root, message);
     send_message(root, message);
+    message.data = NULL;
+    message.nbytes = 0;
+    message.message_type = MSG_GODIE;
+    send_message(root, message);
     actor_system_join(root);
     free(child_role);
     return 0;
@@ -106,8 +110,8 @@ static char *godie() {
 static char *all_tests()
 {
     //mu_run_test(initial);
-    mu_run_test(hello);
-    //mu_run_test(spawn);
+    //mu_run_test(hello);
+    mu_run_test(spawn);
     //while (1) {
         //mu_run_test(spawn);
         //fprintf(stderr, "============\n");
