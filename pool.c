@@ -5,7 +5,7 @@
 //todo: syserr
 
 static void *worker(void *);
-static void handle(actor_t *actor, message_t message, list_t *actor_list);
+static void handle(actor_t *actor, message_t message, pool_t *pool);
 
 pool_t *new_pool(size_t size) {
     pool_t *pool = malloc(sizeof(pool_t));
@@ -14,8 +14,9 @@ pool_t *new_pool(size_t size) {
     }
     pool->size = size;
     pool->keep_alive = TRUE;
-    pool->alive_cnt = 0;
+    pool->alive_thread_cnt = 0;
     pool->work_cond_val = FALSE;
+    pool->alive_actor_cnt = 1;
     pthread_mutex_init(&pool->mutex, NULL);
     pthread_cond_init(&pool->work_cond, NULL);
     return pool;
@@ -32,7 +33,7 @@ int create_threads(pool_t *pool, list_t *actor_list) {
     for (size_t i = 0; i < size; i++) {
         pthread_create(threads + i, NULL, &worker, pool);
     }
-    pool->alive_cnt = size;
+    pool->alive_thread_cnt = size;
     return SUCCESS;
 }
 
@@ -86,18 +87,18 @@ static void *worker(void *data) {
             actor->condition = OPERATED;
             actor->thread = pthread_self();
             pthread_mutex_unlock(&actor->mutex);
-            handle(actor, message, actor_list);
+            handle(actor, message, pool);
             //pthread_mutex_unlock(&actor->mutex);
 #ifdef DEBUG
             fprintf(stderr, "finished, thread = %lu\n", pthread_self());
             fflush(stderr);
 #endif
         } else {
-            int on_wait = 0;
+            int shutdown = 0;
             pthread_mutex_lock(&pool->mutex);
-            on_wait |= !pool->keep_alive;
+            shutdown |= !pool->keep_alive;
             pthread_mutex_unlock(&pool->mutex);
-            if (on_wait) {
+            if (shutdown) {
                 break;
             }
             pthread_mutex_lock(&pool->mutex);
@@ -113,7 +114,7 @@ static void *worker(void *data) {
         }
     }
     pthread_mutex_lock(&pool->mutex);
-    pool->alive_cnt--;
+    pool->alive_thread_cnt--;
     pthread_mutex_unlock(&pool->mutex);
 #ifdef DEBUG
     fprintf(stderr, "finishing %lu\n", pthread_self());
@@ -122,7 +123,7 @@ static void *worker(void *data) {
     return NULL;
 }
 
-static void handle(actor_t *actor, message_t message, list_t *actor_list) {
+static void handle(actor_t *actor, message_t message, pool_t *pool) {
 #ifdef DEBUG
     fprintf(stderr, "%lu handles, type = %lu, hell = %lu\n", pthread_self(), message.message_type, MSG_SPAWN);
     fflush(stderr);
@@ -132,6 +133,16 @@ static void handle(actor_t *actor, message_t message, list_t *actor_list) {
             pthread_mutex_lock(&actor->mutex);
             actor->status = DEAD;
             pthread_mutex_unlock(&actor->mutex);
+            pthread_mutex_lock(&pool->mutex);
+            pool->alive_actor_cnt--;
+            fprintf(stderr, "actor died = %d, cnt = %d\n", actor->id, pool->alive_actor_cnt);
+            fflush(stderr);
+            if (pool->alive_actor_cnt == 0) {
+                fprintf(stderr, "all actors are dead");
+                fflush(stderr);
+                pool->keep_alive = FALSE;
+            }
+            pthread_mutex_unlock(&pool->mutex);
             break;
         case MSG_SPAWN: {
             role_t *role = (role_t *) message.data;
@@ -139,7 +150,7 @@ static void handle(actor_t *actor, message_t message, list_t *actor_list) {
             fprintf(stderr, "%lu adding with actor %lu\n", pthread_self(), actor->id);
             fflush(stdout);
 #endif
-            actor_id_t id = add_actor(actor_list, role);
+            actor_id_t id = add_actor(pool->actor_list, role);
 #ifdef DEBUG
             fprintf(stderr, "%lu created %lu\n", pthread_self(), id);
             fflush(stdout);
@@ -149,6 +160,9 @@ static void handle(actor_t *actor, message_t message, list_t *actor_list) {
             hello.nbytes = sizeof(actor_id_t);
             hello.data = (void*)actor->id;
             send_message(id, hello);
+            pthread_mutex_lock(&pool->mutex);
+            pool->alive_actor_cnt++;
+            pthread_mutex_unlock(&pool->mutex);
             break;
         }
         default:
@@ -169,12 +183,10 @@ void destroy_pool(pool_t *pool) {
     int alive_cnt;
     do {
         pthread_mutex_lock(&pool->mutex);
-        alive_cnt = pool->alive_cnt;
+        alive_cnt = pool->alive_thread_cnt;
         pthread_mutex_unlock(&pool->mutex);
-#ifdef DEBUG
         //fprintf(stderr, "cnt = %d\n", alive_cnt);
         //fflush(stderr);
-#endif
         if (alive_cnt > 0) {
             pthread_mutex_lock(&pool->mutex);
             pool->work_cond_val = TRUE;

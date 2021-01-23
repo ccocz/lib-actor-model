@@ -50,10 +50,13 @@ int actor_system_create(actor_id_t *actor, role_t *const role) {
 
 void actor_system_join(actor_id_t actor) {
     // non existing actor id
-    pthread_mutex_lock(&pool->mutex);
-    pool->keep_alive = FALSE;
-    pthread_mutex_unlock(&pool->mutex);
-    destroy_pool(pool);
+    //pthread_mutex_lock(&pool->mutex);
+    //pool->keep_alive = FALSE;
+    //pthread_mutex_unlock(&pool->mutex);
+    if (pool != NULL ) {
+        destroy_pool(pool);
+        pool = NULL;
+    }
 }
 
 int send_message(actor_id_t actor, message_t message) {

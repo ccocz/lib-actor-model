@@ -6,7 +6,7 @@
 
 #define NRPROMPTS 5
 
-#define MSG_WAKE_ROOT 1
+#define MSG_WAKE_PARENT 1
 #define MSG_INFORM_ACTOR 2
 #define MSG_INFORM_ROOT 3
 #define MSG_START_SUM_OPERATION 4
@@ -59,7 +59,7 @@ void hello(void **stateptr, size_t nbytes, void *data) {
     (void)nbytes;
     actor_id_t my_id = actor_id_self();
     actor_id_t parent_id = (actor_id_t)data;
-    message_t message = get_message(MSG_WAKE_ROOT, sizeof(actor_id_t), (void *) my_id);
+    message_t message = get_message(MSG_WAKE_PARENT, sizeof(actor_id_t), (void *) my_id);
     int ret = send_message(parent_id, message);
     if (ret != SUCCESS) {
         err("send message error ", ret);
@@ -153,6 +153,11 @@ void sum_cell(void **stateptr, size_t nbytes, void *data) {
     }
     actor_info->cnt_done++;
     if (actor_info->cnt_done == rows) {
+        message_t message = get_message(MSG_GODIE, 0, NULL);
+        int ret = send_message(actor_id_self(), message);
+        if (ret != SUCCESS) {
+            err("actor couldn't suicide ", ret);
+        }
         free(actor_info);
     }
 }
