@@ -106,19 +106,62 @@ static char *godie() {
     return 0;
 }
 
+long a = -1;
+long b = -1;
+
+void append(void **stateptr, size_t nbytes, void *data) {
+    if (a == -1) {
+        a = (long)data;
+    } else {
+        b = (long)data;
+    }
+}
+
+static char *check_comm_order() {
+    actor_id_t root;
+    role_t *root_role = malloc(sizeof(role_t));
+    root_role->nprompts = 1;
+    act_t acts[] = {append};
+    root_role->prompts = acts;
+    int ret = actor_system_create(&root, root_role);
+    mu_assert("root created", ret == SUCCESS);
+    mu_assert("root id", root == ROOT_ID);
+    message_t message;
+    message.data = (void*)1LL;
+    message.nbytes = sizeof(long);
+    message.message_type = MSG_HELLO;
+    send_message(root, message);
+    message.data = (void*)2LL;
+    message.nbytes = sizeof(long);
+    message.message_type = MSG_HELLO;
+    send_message(root, message);
+    message.data = NULL;
+    message.nbytes = 0;
+    message.message_type = MSG_GODIE;
+    send_message(root, message);
+    actor_system_join(root);
+    mu_assert("order should be correct", a == 1 && b == 2);
+    free(root_role);
+    return 0;
+}
 
 static char *all_tests()
 {
     //mu_run_test(initial);
     //mu_run_test(hello);
-    mu_run_test(spawn);
+    //mu_run_test(spawn);
     //while (1) {
         //mu_run_test(spawn);
         //fprintf(stderr, "============\n");
         //fflush(stderr);
     //}
-
     //mu_run_test(godie);
+    while (1) {
+        a = -1;
+        b = -1;
+        printf("ok\n");
+        mu_run_test(check_comm_order);
+    }
     return 0;
 }
 

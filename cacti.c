@@ -4,15 +4,12 @@
 #include "actor.h"
 #include "queue.h"
 #include <signal.h>
-#include <stdio.h>
 
 list_t *actor_list; // volatile?
 pool_t *pool;
 
 static void sig_handler(int signal) {
-    printf("HAHAHA");
     exit(1);
-    //actor_system_join(ROOT_ID);
 }
 //todo: return value
 int actor_system_create(actor_id_t *actor, role_t *const role) {
@@ -70,9 +67,12 @@ int send_message(actor_id_t actor, message_t message) {
         pthread_mutex_unlock(&actor_ptr->mutex);
         return ACTOR_NOT_ALIVE_ERR;
     }
+    if (actor_ptr->mailbox->size >= ACTOR_QUEUE_LIMIT) {
+        return ACTOR_QUEUE_LIMIT_ERR;
+    }
     push(actor_ptr->mailbox, message);
     pthread_mutex_unlock(&actor_ptr->mutex);
-    // todo: don't receive if not aplicable
+    // todo: don't receive if not aplicable, i.e., invalid request
     pthread_mutex_lock(&pool->mutex);
     pool->work_cond_val = TRUE;
     pthread_cond_broadcast(&pool->work_cond);
