@@ -41,7 +41,6 @@ actor_id_t add_actor(list_t *list, role_t *role) {
 }
 
 actor_t *find_actor_by_thread(list_t *list, pthread_t thread) {
-    //watch for lock
 #ifdef DEBUG
     fprintf(stderr, "%lu waiting for list mutex_cond\n", pthread_self());
 #endif
@@ -74,7 +73,6 @@ actor_t *find_actor_by_thread(list_t *list, pthread_t thread) {
 void free_list(list_t *list) {
     for (size_t i = 0; i < list->pos; i++) {
         pthread_mutex_destroy(&list->start[i]->mutex);
-        //pthread_cond_destroy(&list->start[i]->worker);
         free_queue(list->start[i]->mailbox);
         free(list->start[i]);
     }

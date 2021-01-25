@@ -11,7 +11,7 @@ pool_t *pool;
 static void sig_handler(int signal) {
     exit(1);
 }
-//todo: return value
+
 int actor_system_create(actor_id_t *actor, role_t *const role) {
     actor_t *root = new_actor(role, ROOT_ID);
     if (root == NULL) {

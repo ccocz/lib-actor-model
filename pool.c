@@ -154,7 +154,7 @@ static void handle(actor_t *actor, message_t message, pool_t *pool) {
             pthread_mutex_unlock(&pool->mutex);
             break;
         case MSG_SPAWN: {
-            role_t *role = (role_t *) message.data;
+            role_t *role = (role_t *)message.data;
 #ifdef DEBUG
             fprintf(stderr, "%lu adding with actor %lu\n", pthread_self(), actor->id);
             fflush(stdout);
@@ -179,8 +179,12 @@ static void handle(actor_t *actor, message_t message, pool_t *pool) {
             fprintf(stderr, "sending_default\n");
             fflush(stdout);
 #endif
-            actor->role->prompts[message.message_type]
-            (&actor->state, message.nbytes, message.data);
+            // todo: check if handler exists
+            if (message.message_type >= 0
+                && message.message_type < (long)actor->role->nprompts) {
+                actor->role->prompts[message.message_type]
+                        (&actor->state, message.nbytes, message.data);
+            }
     }
     int empty_queue;
     pthread_mutex_lock(&actor->mutex);

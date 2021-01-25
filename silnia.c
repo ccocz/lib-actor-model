@@ -3,10 +3,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-//todo: does order matter
-
-//todo: fix ans copying
-
 #define MSG_FACTORIAL 1
 #define MSG_WAKE_PARENT 2
 #define NPROMTS 3
@@ -14,7 +10,7 @@
 role_t *factorial_role;
 
 typedef struct ans {
-    int k_fact;
+    unsigned long long k_fact;
     int k;
     int n;
     actor_id_t parent;
@@ -60,7 +56,7 @@ void start_point(void **stateptr, size_t nbytes, void *data) {
     *stateptr = malloc(sizeof(state_t));
     ans_t *ans = (ans_t*)data;
     if (ans->n == ans->k) {
-        printf("%d\n", ans->k_fact);
+        printf("%lld\n", ans->k_fact);
         fflush(stdout);
         if (ans->parent != actor_id_self()) {
             message_t message = get_message(MSG_GODIE, 0, NULL);
@@ -119,7 +115,7 @@ void factorial(int n) {
 }
 
 int main(){
-    int n = 5;
+    int n = 0;
     act_t acts[] = {hello, start_point, wait_child};
     role_t *role = malloc(sizeof(role_t));
     role->nprompts = NPROMTS;
