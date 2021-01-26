@@ -60,10 +60,6 @@ int send_message(actor_id_t actor, message_t message) {
     }
     pthread_mutex_lock(&actor_ptr->mutex);
     if (actor_ptr->status == DEAD) {
-#ifdef DEBUG
-        fprintf(stderr, "DEAD DEAD DEAD");
-        fflush(stderr);
-#endif
         pthread_mutex_unlock(&actor_ptr->mutex);
         return ACTOR_NOT_ALIVE_ERR;
     }

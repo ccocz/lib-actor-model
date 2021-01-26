@@ -41,13 +41,7 @@ actor_id_t add_actor(list_t *list, role_t *role) {
 }
 
 actor_t *find_actor_by_thread(list_t *list, pthread_t thread) {
-#ifdef DEBUG
-    fprintf(stderr, "%lu waiting for list mutex_cond\n", pthread_self());
-#endif
     pthread_mutex_lock(&list->mutex);
-#ifdef DEBUG
-    fprintf(stderr, "%lu got list mutex_cond\n", pthread_self());
-#endif
     int match = 0;
     actor_t *actor = NULL;
     for (size_t i = 0; i < list->pos; i++) {
@@ -63,10 +57,6 @@ actor_t *find_actor_by_thread(list_t *list, pthread_t thread) {
         }
     }
     pthread_mutex_unlock(&list->mutex);
-#ifdef DEBUG
-    fprintf(stderr, "not found!!!\n");
-    fflush(stderr);
-#endif
     return actor;
 }
 

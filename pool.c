@@ -46,21 +46,11 @@ static void *worker(void *data) {
     message_t message;
     actor_t *actor = NULL;
     while (1) {
-#ifdef DEBUG
-        fprintf(stderr, "starting_before, thread = %lu\n", pthread_self());
-        fflush(stderr);
-#endif
         pthread_mutex_lock(&actor_list->mutex);
         found = 0;
         for (size_t i = 0; i < actor_list->pos; i++) {
             last_pos = (last_pos + 1) % actor_list->pos;
             actor = actor_list->start[last_pos];
-            //if (actor->condition == OPERATED) { // todo: tmp
-                //continue;
-            //}
-
-
-
             pthread_mutex_lock(&actor->mutex);
             if (actor->condition == IDLE) {
                 if (!is_empty(actor->mailbox)) {
@@ -70,42 +60,13 @@ static void *worker(void *data) {
                 }
             }
             pthread_mutex_unlock(&actor->mutex);
-
-
-
-#ifdef DEBUG
-            fprintf(stderr, "%lu waiting for actor %lu\n", pthread_self(), actor->id);
-            fflush(stderr);
-#endif
-
-            //pthread_mutex_lock(&actor->mailbox->mutex); // one mutex
-            //if (!is_empty(actor->mailbox)) {
-                //message = pop(actor->mailbox);
-                //found = 1;
-                //pthread_mutex_unlock(&actor->mailbox->mutex);
-                //break;
-            //}
-            //pthread_mutex_unlock(&actor->mailbox->mutex);
-
         }
         pthread_mutex_unlock(&actor_list->mutex);
         if (found) {
-
-            //pthread_mutex_lock(&actor->mutex);
-            //while (actor->condition == OPERATED) {
-                //pthread_cond_wait(&actor->worker, &actor->mutex);
-            //}
-
             actor->condition = OPERATED;
             actor->thread = pthread_self();
             pthread_mutex_unlock(&actor->mutex);
             handle(actor, message, pool);
-
-
-#ifdef DEBUG
-            fprintf(stderr, "finished, thread = %lu\n", pthread_self());
-            fflush(stderr);
-#endif
         } else {
             int shutdown = 0;
             pthread_mutex_lock(&pool->mutex);
@@ -118,10 +79,6 @@ static void *worker(void *data) {
             while (pool->work_cond_val == FALSE) {
                 pthread_cond_wait(&pool->work_cond, &pool->mutex);
             }
-#ifdef DEBUG
-            fprintf(stderr, "exit %lu\n", pthread_self());
-            fflush(stderr);
-#endif
             pool->work_cond_val = FALSE;
             pthread_mutex_unlock(&pool->mutex);
         }
@@ -129,18 +86,10 @@ static void *worker(void *data) {
     pthread_mutex_lock(&pool->mutex);
     pool->alive_thread_cnt--;
     pthread_mutex_unlock(&pool->mutex);
-#ifdef DEBUG
-    fprintf(stderr, "finishing %lu\n", pthread_self());
-    fflush(stderr);
-#endif
     return NULL;
 }
 
 static void handle(actor_t *actor, message_t message, pool_t *pool) {
-#ifdef DEBUG
-    fprintf(stderr, "%lu handles, type = %lu, hell = %lu\n", pthread_self(), message.message_type, MSG_SPAWN);
-    fflush(stderr);
-#endif
     switch (message.message_type) {
         case MSG_GODIE:
             pthread_mutex_lock(&actor->mutex);
@@ -155,15 +104,7 @@ static void handle(actor_t *actor, message_t message, pool_t *pool) {
             break;
         case MSG_SPAWN: {
             role_t *role = (role_t *)message.data;
-#ifdef DEBUG
-            fprintf(stderr, "%lu adding with actor %lu\n", pthread_self(), actor->id);
-            fflush(stdout);
-#endif
             actor_id_t id = add_actor(pool->actor_list, role);
-#ifdef DEBUG
-            fprintf(stderr, "%lu created %lu\n", pthread_self(), id);
-            fflush(stdout);
-#endif
             message_t hello;
             hello.message_type = MSG_HELLO;
             hello.nbytes = sizeof(actor_id_t);
@@ -175,10 +116,6 @@ static void handle(actor_t *actor, message_t message, pool_t *pool) {
             break;
         }
         default:
-#ifdef DEBUG
-            fprintf(stderr, "sending_default\n");
-            fflush(stdout);
-#endif
             // todo: check if handler exists
             if (message.message_type >= 0
                 && message.message_type < (long)actor->role->nprompts) {
@@ -197,17 +134,15 @@ static void handle(actor_t *actor, message_t message, pool_t *pool) {
         pthread_cond_broadcast(&pool->work_cond);
         pthread_mutex_unlock(&pool->mutex);
     }
-    //pthread_cond_broadcast(&actor->worker);
 }
 
 void destroy_pool(pool_t *pool) {
+    //todo:remove this part
     int alive_cnt;
     do {
         pthread_mutex_lock(&pool->mutex);
         alive_cnt = pool->alive_thread_cnt;
         pthread_mutex_unlock(&pool->mutex);
-        //fprintf(stderr, "cnt = %d\n", alive_cnt);
-        //fflush(stderr);
         if (alive_cnt > 0) {
             pthread_mutex_lock(&pool->mutex);
             pool->work_cond_val = TRUE;
