@@ -21,6 +21,7 @@ pool_t *new_pool(size_t size) {
     pool->is_interrupted = FALSE;
     pthread_mutex_init(&pool->mutex, NULL);
     pthread_cond_init(&pool->work_cond, NULL);
+    pthread_cond_init(&pool->destroy_cond, NULL);
     return pool;
 }
 
@@ -28,8 +29,9 @@ int create_threads(pool_t *pool, list_t *actor_list) {
     sigset_t mask;
     sigemptyset(&mask);
     sigaddset(&mask, SIGINT);
-    sigaddset(&mask, SIGKILL);
+    sigaddset(&mask, SIGKILL); // todo: remove these
     sigaddset(&mask, SIGTERM);
+    sigaddset(&mask, SIGUSR1);
     int ret = pthread_sigmask(SIG_BLOCK, &mask, NULL);
     if (ret != 0) {
         return FAILURE;
@@ -177,6 +179,7 @@ void destroy_pool(pool_t *pool) {
     }
     pthread_mutex_destroy(&pool->mutex);
     pthread_cond_destroy(&pool->work_cond);
+    pthread_cond_destroy(&pool->destroy_cond);
     free_list(pool->actor_list);
     free(pool->threads);
     free(pool);

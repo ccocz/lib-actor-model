@@ -8,6 +8,7 @@
 
 list_t *actor_list; // volatile?
 pool_t *pool;
+pthread_t sig_handler;
 
 static void *sig_wait(__attribute__((unused)) void *arg) {
     pthread_detach(pthread_self());
@@ -16,11 +17,15 @@ static void *sig_wait(__attribute__((unused)) void *arg) {
     sigaddset(&mask, SIGINT);
     sigaddset(&mask, SIGKILL);
     sigaddset(&mask, SIGTERM);
+    sigaddset(&mask, SIGUSR1);
     int res, sig;
     while (TRUE) {
         res = sigwait(&mask, &sig);
         if (res != 0) {
             printf("error");
+        }
+        if (sig == SIGUSR1) {
+            return NULL;
         }
         pthread_mutex_lock(&pool->mutex);
         pool->is_interrupted = TRUE;
@@ -57,8 +62,7 @@ int actor_system_create(actor_id_t *actor, role_t *const role) {
         return FAILURE;
     }
     *actor = ROOT_ID;
-    pthread_t signal_waiter;
-    ret = pthread_create(&signal_waiter, NULL, &sig_wait, NULL);
+    ret = pthread_create(&sig_handler, NULL, &sig_wait, NULL);
     if (ret != 0) {
         return FAILURE;
     }
@@ -71,6 +75,7 @@ void actor_system_join(actor_id_t actor) {
         destroy_pool(pool);
         pool = NULL;
         actor_list = NULL;
+        pthread_kill(sig_handler, SIGUSR1);
     }
 }
 
@@ -92,7 +97,6 @@ int send_message(actor_id_t actor, message_t message) {
     }
     push(actor_ptr->mailbox, message);
     pthread_mutex_unlock(&actor_ptr->mutex);
-    // todo: don't receive if not aplicable, i.e., invalid request
     pthread_mutex_lock(&pool->mutex);
     pool->work_cond_val = TRUE;
     pthread_cond_broadcast(&pool->work_cond);
