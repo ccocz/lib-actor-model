@@ -4,12 +4,39 @@
 #include "actor.h"
 #include "queue.h"
 #include <signal.h>
+#include <stdio.h>
 
 list_t *actor_list; // volatile?
 pool_t *pool;
 
-static void sig_handler(int signal) {
-    exit(1);
+static void *sig_wait(__attribute__((unused)) void *arg) {
+    pthread_detach(pthread_self());
+    sigset_t mask;
+    sigemptyset(&mask);
+    sigaddset(&mask, SIGINT);
+    sigaddset(&mask, SIGKILL);
+    sigaddset(&mask, SIGTERM);
+    int res, sig;
+    while (TRUE) {
+        res = sigwait(&mask, &sig);
+        if (res != 0) {
+            printf("error");
+        }
+        pthread_mutex_lock(&pool->mutex);
+        pool->is_interrupted = TRUE;
+        pthread_mutex_unlock(&pool->mutex);
+        message_t message;
+        message.message_type = MSG_GODIE;
+        message.data = NULL;
+        message.nbytes = 0;
+        for (size_t i = 0; i < actor_list->pos; i++) {
+            send_message(actor_list->start[i]->id, message);
+        }
+        //actor_system_join(ROOT_ID);
+        printf("Signal handling thread got signal %d\n", sig);
+        fflush(stdout);
+        return NULL;
+    }
 }
 
 int actor_system_create(actor_id_t *actor, role_t *const role) {
@@ -30,16 +57,9 @@ int actor_system_create(actor_id_t *actor, role_t *const role) {
         return FAILURE;
     }
     *actor = ROOT_ID;
-    struct sigaction sa;
-    sigset_t mask;
-    sigemptyset(&mask);
-    sa.sa_flags = 0;
-    sa.sa_handler = sig_handler;
-    sa.sa_mask = mask;
-    if (sigaction(SIGINT, &sa, NULL) == -1) {
-        return FAILURE;
-    }
-    if (sigaction(SIGTERM, &sa, NULL) == -1) {
+    pthread_t signal_waiter;
+    ret = pthread_create(&signal_waiter, NULL, &sig_wait, NULL);
+    if (ret != 0) {
         return FAILURE;
     }
     return SUCCESS;
@@ -47,13 +67,17 @@ int actor_system_create(actor_id_t *actor, role_t *const role) {
 
 void actor_system_join(actor_id_t actor) {
     // non existing actor id
-    if (pool != NULL ) {
+    if (pool != NULL) {
         destroy_pool(pool);
         pool = NULL;
+        actor_list = NULL;
     }
 }
 
 int send_message(actor_id_t actor, message_t message) {
+    if (actor_list == NULL) {
+        return SYSTEM_HALTED_ERR;
+    }
     actor_t *actor_ptr = find_actor(actor_list, actor);
     if (actor_ptr == NULL) {
         return ACTOR_NOT_PRESENT_ERR;
@@ -77,6 +101,9 @@ int send_message(actor_id_t actor, message_t message) {
 }
 
 actor_id_t actor_id_self() {
+    if (actor_list == NULL) {
+        return SYSTEM_HALTED_ERR;
+    }
     actor_t *actor = find_actor_by_thread(actor_list, pthread_self());
     if (actor == NULL) {
         // error ?

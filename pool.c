@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <signal.h>
 #include "pool.h"
 
 //todo: check after malloc
@@ -17,12 +18,22 @@ pool_t *new_pool(size_t size) {
     pool->alive_thread_cnt = 0;
     pool->work_cond_val = FALSE;
     pool->alive_actor_cnt = 1;
+    pool->is_interrupted = FALSE;
     pthread_mutex_init(&pool->mutex, NULL);
     pthread_cond_init(&pool->work_cond, NULL);
     return pool;
 }
 
 int create_threads(pool_t *pool, list_t *actor_list) {
+    sigset_t mask;
+    sigemptyset(&mask);
+    sigaddset(&mask, SIGINT);
+    sigaddset(&mask, SIGKILL);
+    sigaddset(&mask, SIGTERM);
+    int ret = pthread_sigmask(SIG_BLOCK, &mask, NULL);
+    if (ret != 0) {
+        return FAILURE;
+    }
     size_t size = pool->size;
     pthread_t *threads = malloc(sizeof(pthread_t) * size);
     if (threads == NULL) {
@@ -103,6 +114,12 @@ static void handle(actor_t *actor, message_t message, pool_t *pool) {
             pthread_mutex_unlock(&pool->mutex);
             break;
         case MSG_SPAWN: {
+            pthread_mutex_lock(&pool->mutex);
+            if (pool->is_interrupted) {
+                pthread_mutex_unlock(&pool->mutex);
+                break;
+            }
+            pthread_mutex_unlock(&pool->mutex);
             role_t *role = (role_t *)message.data;
             actor_id_t id = add_actor(pool->actor_list, role);
             message_t hello;

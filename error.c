@@ -11,6 +11,6 @@ void err(const char *msg, int code) {
         fprintf(stderr, " another ");
     }
     va_end(fmt_args);*/
-    exit(EXIT_FAILURE);
+    //exit(EXIT_FAILURE);
 }
 

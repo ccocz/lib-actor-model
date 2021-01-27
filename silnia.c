@@ -2,6 +2,7 @@
 #include "error.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #define MSG_FACTORIAL 1
 #define MSG_WAKE_PARENT 2
@@ -29,7 +30,9 @@ static message_t get_message(message_type_t type, size_t nbytes, void* data) {
     return message;
 }
 
-void hello(void **stateptr, size_t nbytes, void *data) {
+void hello(__attribute__((unused)) void **stateptr,
+           __attribute__((unused)) size_t nbytes,
+           void *data) {
     actor_id_t my_id = actor_id_self();
     actor_id_t parent_id = (actor_id_t)data;
     message_t message = get_message(MSG_WAKE_PARENT, sizeof(actor_id_t), (void *) my_id);
@@ -39,7 +42,7 @@ void hello(void **stateptr, size_t nbytes, void *data) {
     }
 }
 
-void wait_child(void **stateptr, size_t nbytes, void *data) {
+void wait_child(void **stateptr, __attribute__((unused)) size_t nbytes, void *data) {
     actor_id_t send_to = (actor_id_t)data;
     state_t *my_state = *stateptr;
     ans_t *ans = my_state->ans;
@@ -52,10 +55,11 @@ void wait_child(void **stateptr, size_t nbytes, void *data) {
     }
 }
 
-void start_point(void **stateptr, size_t nbytes, void *data) {
+void start_point(void **stateptr, __attribute__((unused)) size_t nbytes, void *data) {
     *stateptr = malloc(sizeof(state_t));
     ans_t *ans = (ans_t*)data;
     if (ans->n == ans->k) {
+        sleep(6);
         printf("%lld\n", ans->k_fact);
         fflush(stdout);
         if (ans->parent != actor_id_self()) {
@@ -115,15 +119,15 @@ void factorial(int n) {
 }
 
 int main(){
-    int n = 0;
+    int n = 20;
     act_t acts[] = {hello, start_point, wait_child};
     role_t *role = malloc(sizeof(role_t));
     role->nprompts = NPROMTS;
     role->prompts = acts;
     factorial_role = role;
-    while (1) {
+    //while (1) {
         factorial(n);
-        n = (n + 1) % 10;
-    }
+      //  n = (n + 1) % 10;
+    //}
 	return 0;
 }
