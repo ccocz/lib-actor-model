@@ -67,6 +67,7 @@ int actor_system_create(actor_id_t *actor, role_t *const role) {
 }
 
 void actor_system_join(actor_id_t actor) {
+    (void)actor;
     // non existing actor id
     if (pool != NULL) {
         pthread_mutex_lock(&pool->mutex);

@@ -2,7 +2,6 @@
 #include "error.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 
 #define MSG_FACTORIAL 1
 #define MSG_WAKE_PARENT 2
@@ -20,7 +19,6 @@ typedef struct ans {
 typedef struct state {
     ans_t *ans;
 } state_t;
-
 
 static message_t get_message(message_type_t type, size_t nbytes, void* data) {
     message_t message;
