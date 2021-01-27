@@ -59,7 +59,6 @@ void start_point(void **stateptr, __attribute__((unused)) size_t nbytes, void *d
     *stateptr = malloc(sizeof(state_t));
     ans_t *ans = (ans_t*)data;
     if (ans->n == ans->k) {
-        sleep(6);
         printf("%lld\n", ans->k_fact);
         fflush(stdout);
         if (ans->parent != actor_id_self()) {

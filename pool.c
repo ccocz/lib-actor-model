@@ -110,6 +110,7 @@ static void handle(actor_t *actor, message_t message, pool_t *pool) {
             pool->alive_actor_cnt--;
             if (pool->alive_actor_cnt == 0) {
                 pool->keep_alive = FALSE;
+                pthread_cond_broadcast(&pool->destroy_cond); //fixme: wake only one
             }
             pthread_mutex_unlock(&pool->mutex);
             break;
@@ -154,7 +155,11 @@ static void handle(actor_t *actor, message_t message, pool_t *pool) {
 }
 
 void destroy_pool(pool_t *pool) {
-    //todo:remove this part
+    pthread_mutex_lock(&pool->mutex);
+    while (pool->keep_alive == TRUE) {
+        pthread_cond_wait(&pool->destroy_cond, &pool->mutex);
+    }
+    pthread_mutex_unlock(&pool->mutex);
     int alive_cnt;
     do {
         pthread_mutex_lock(&pool->mutex);

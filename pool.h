@@ -12,6 +12,7 @@ typedef struct pool {
     pthread_t *threads;
     size_t size;
     pthread_cond_t work_cond;
+    pthread_cond_t destroy_cond;
     pthread_mutex_t mutex;
     volatile int work_cond_val;
     volatile int alive_thread_cnt;
