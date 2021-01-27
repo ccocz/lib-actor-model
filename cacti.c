@@ -37,10 +37,7 @@ static void *sig_wait(__attribute__((unused)) void *arg) {
         for (size_t i = 0; i < actor_list->pos; i++) {
             send_message(actor_list->start[i]->id, message);
         }
-        //actor_system_join(ROOT_ID);
-        printf("Signal handling thread got signal %d\n", sig);
-        fflush(stdout);
-        return NULL;
+        actor_system_join(ROOT_ID);
     }
 }
 
@@ -72,6 +69,13 @@ int actor_system_create(actor_id_t *actor, role_t *const role) {
 void actor_system_join(actor_id_t actor) {
     // non existing actor id
     if (pool != NULL) {
+        pthread_mutex_lock(&pool->mutex);
+        if (pool->is_destroyed == TRUE) {
+            pthread_mutex_unlock(&pool->mutex);
+            return;
+        }
+        pool->is_destroyed = TRUE;
+        pthread_mutex_unlock(&pool->mutex);
         destroy_pool(pool);
         pool = NULL;
         actor_list = NULL;

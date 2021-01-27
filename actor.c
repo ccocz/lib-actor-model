@@ -15,7 +15,7 @@ actor_t *new_actor(role_t *role, actor_id_t id) {
     actor->id = id;
     actor->status = ALIVE;
     actor->state = NULL;
-    actor->condition = IDLE; // ?
+    actor->condition = IDLE;
     pthread_mutex_init(&actor->mutex, NULL);
     return actor;
 }

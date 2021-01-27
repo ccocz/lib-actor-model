@@ -17,9 +17,9 @@ typedef struct pool {
     volatile int work_cond_val;
     volatile int alive_thread_cnt;
     volatile int alive_actor_cnt;
-    volatile int keep_alive;
+    volatile int keep_alive; // todo: check volatiles
     volatile int is_interrupted;
-
+    volatile int is_destroyed;
 } pool_t;
 
 pool_t *new_pool(size_t size);

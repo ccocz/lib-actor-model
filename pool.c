@@ -19,6 +19,7 @@ pool_t *new_pool(size_t size) {
     pool->work_cond_val = FALSE;
     pool->alive_actor_cnt = 1;
     pool->is_interrupted = FALSE;
+    pool->is_destroyed = FALSE;
     pthread_mutex_init(&pool->mutex, NULL);
     pthread_cond_init(&pool->work_cond, NULL);
     pthread_cond_init(&pool->destroy_cond, NULL);
