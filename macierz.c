@@ -45,18 +45,14 @@ int rows;
 int columns;
 cell_t **grid;
 int *row_sum;
+actor_id_t root;
 
-static message_t get_message(message_type_t type, size_t nbytes, void* data) {
-    message_t message;
-    message.message_type = type;
-    message.nbytes = nbytes;
-    message.data = data;
-    return message;
-}
-
-void hello(void **stateptr, size_t nbytes, void *data) {
-    (void)stateptr;
-    (void)nbytes;
+void hello(__attribute__((unused)) void **stateptr,
+           __attribute__((unused)) size_t nbytes,
+           void *data) {
+    if (actor_id_self() == root) {
+        return;
+    }
     actor_id_t my_id = actor_id_self();
     actor_id_t parent_id = (actor_id_t)data;
     message_t message = get_message(MSG_WAKE_PARENT, sizeof(actor_id_t), (void *) my_id);
@@ -66,8 +62,9 @@ void hello(void **stateptr, size_t nbytes, void *data) {
     }
 }
 
-void gather_info(void **stateptr, size_t nbytes, void *data) {
-    (void)nbytes;
+void gather_info(void **stateptr,
+                 __attribute__((unused)) size_t nbytes,
+                 void *data) {
     actor_info_t *actor_info = (actor_info_t*)data;
     *stateptr = actor_info;
     message_t message = get_message(MSG_INFORM_ROOT, 0, NULL);
@@ -77,8 +74,9 @@ void gather_info(void **stateptr, size_t nbytes, void *data) {
     }
 }
 
-void wait_columnar(void **stateptr, size_t nbytes, void *data) {
-    (void)nbytes;
+void wait_columnar(void **stateptr,
+                   __attribute__((unused)) size_t nbytes,
+                   void *data) {
     root_info_t *root_info;
     if (*stateptr == NULL) {
         *stateptr = malloc(sizeof(root_info_t));
@@ -105,9 +103,9 @@ void wait_columnar(void **stateptr, size_t nbytes, void *data) {
     }
 }
 
-void wait_to_start(void **stateptr, size_t nbytes, void *data) {
-    (void)nbytes;
-    (void)data;
+void wait_to_start(void **stateptr,
+                   __attribute__((unused)) size_t nbytes,
+                   __attribute__((unused)) void *data) {
     root_info_t *root_info = *stateptr;
     root_info->cnt_ready++;
     if (root_info->cnt_ready == columns - 1) {
@@ -116,7 +114,7 @@ void wait_to_start(void **stateptr, size_t nbytes, void *data) {
         actor_info_t *actor_info = malloc(sizeof(actor_info_t));
         actor_info->root = actor_id_self();
         actor_info->neighbour = neighbor;
-        actor_info->is_last = FALSE; // todo
+        actor_info->is_last = FALSE;
         actor_info->column = 0;
         actor_info->cnt_done = 0;
         *stateptr = actor_info;
@@ -133,8 +131,9 @@ void wait_to_start(void **stateptr, size_t nbytes, void *data) {
     }
 }
 
-void sum_cell(void **stateptr, size_t nbytes, void *data) {
-    (void)nbytes;
+void sum_cell(void **stateptr,
+              __attribute__((unused)) size_t nbytes,
+              void *data) {
     actor_info_t *actor_info = *stateptr;
     ans_t *ans = (ans_t*)data;
     int row = ans->row;
@@ -162,10 +161,9 @@ void sum_cell(void **stateptr, size_t nbytes, void *data) {
     }
 }
 
-void sum_all(void **stateptr, size_t nbytes, void *data) {
-    (void)stateptr;
-    (void)nbytes;
-    (void)data;
+void sum_all(__attribute__((unused)) void **stateptr,
+             __attribute__((unused)) size_t nbytes,
+             __attribute__((unused)) void *data) {
     for (int i = 0; i < rows; i++) {
         usleep(MILLIS * grid[i][0].timeout);
         row_sum[i] = grid[i][0].value;
@@ -173,7 +171,6 @@ void sum_all(void **stateptr, size_t nbytes, void *data) {
 }
 
 void rows_sum(role_t *role) {
-    actor_id_t root;
     int ret = actor_system_create(&root, role);
     if (ret != SUCCESS) {
         err("error system create ", ret);
@@ -221,3 +218,5 @@ int main(){
     free(role);
 	return 0;
 }
+
+//todo: millis

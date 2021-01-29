@@ -5,6 +5,9 @@
 #include <pthread.h>
 #include "actor.h"
 
+#define TRUE 1
+#define FALSE 0
+
 typedef struct list {
     size_t size;
     size_t pos;

@@ -6,12 +6,35 @@
 #include <signal.h>
 #include <stdio.h>
 
-list_t *actor_list; // volatile?
+list_t *actor_list;
 pool_t *pool;
 pthread_t sig_handler;
 
+static void *sig_wait(__attribute__((unused)) void *arg);
+
+__attribute__((constructor)) void init() {
+    sigset_t mask;
+    sigemptyset(&mask);
+    sigaddset(&mask, SIGINT);
+    sigaddset(&mask, SIGKILL); // todo: remove these
+    sigaddset(&mask, SIGTERM);
+    sigaddset(&mask, SIGUSR1);
+    int ret = sigprocmask(SIG_BLOCK, &mask, NULL);
+    if (ret != 0) {
+        // halt
+    }
+    ret = pthread_create(&sig_handler, NULL, &sig_wait, NULL);
+    if (ret != 0) {
+        //halt
+    }
+}
+
+ __attribute__((destructor)) void destroy() {
+    pthread_kill(sig_handler, SIGUSR1);
+    pthread_join(sig_handler, NULL);
+}
+
 static void *sig_wait(__attribute__((unused)) void *arg) {
-    pthread_detach(pthread_self());
     sigset_t mask;
     sigemptyset(&mask);
     sigaddset(&mask, SIGINT);
@@ -30,10 +53,7 @@ static void *sig_wait(__attribute__((unused)) void *arg) {
         pthread_mutex_lock(&pool->mutex);
         pool->is_interrupted = TRUE;
         pthread_mutex_unlock(&pool->mutex);
-        message_t message;
-        message.message_type = MSG_GODIE;
-        message.data = NULL;
-        message.nbytes = 0;
+        message_t message = get_message(MSG_GODIE, 0, NULL);
         for (size_t i = 0; i < actor_list->pos; i++) {
             send_message(actor_list->start[i]->id, message);
         }
@@ -59,16 +79,13 @@ int actor_system_create(actor_id_t *actor, role_t *const role) {
         return FAILURE;
     }
     *actor = ROOT_ID;
-    ret = pthread_create(&sig_handler, NULL, &sig_wait, NULL);
-    if (ret != 0) {
-        return FAILURE;
-    }
+    send_message(root->id, get_message(MSG_HELLO, 0, NULL));
     return SUCCESS;
 }
 
 void actor_system_join(actor_id_t actor) {
     (void)actor;
-    // non existing actor id
+    // todo: non existing actor id
     if (pool != NULL) {
         pthread_mutex_lock(&pool->mutex);
         if (pool->is_destroyed == TRUE) {
@@ -80,7 +97,6 @@ void actor_system_join(actor_id_t actor) {
         destroy_pool(pool);
         pool = NULL;
         actor_list = NULL;
-        pthread_kill(sig_handler, SIGUSR1);
     }
 }
 
@@ -120,4 +136,12 @@ actor_id_t actor_id_self() {
     } else {
         return actor->id;
     }
+}
+
+message_t get_message(message_type_t type, size_t nbytes, void* data) {
+    message_t message;
+    message.message_type = type;
+    message.nbytes = nbytes;
+    message.data = data;
+    return message;
 }

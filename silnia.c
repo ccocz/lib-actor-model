@@ -8,6 +8,8 @@
 #define NPROMTS 3
 
 role_t *factorial_role;
+role_t *root_role;
+int n;
 
 typedef struct ans {
     unsigned long long k_fact;
@@ -20,13 +22,21 @@ typedef struct state {
     ans_t *ans;
 } state_t;
 
-static message_t get_message(message_type_t type, size_t nbytes, void* data) {
-    message_t message;
-    message.message_type = type;
-    message.nbytes = nbytes;
-    message.data = data;
-    return message;
+void hello_root(__attribute__((unused)) void **stateptr,
+                __attribute__((unused)) size_t nbytes,
+                __attribute__((unused)) void *data) {
+    ans_t *ans = malloc(sizeof(ans_t));
+    ans->k_fact = 1;
+    ans->k = 0;
+    ans->n = n;
+    ans->parent = actor_id_self();
+    message_t message = get_message(MSG_FACTORIAL, sizeof(ans_t), ans);
+    int ret = send_message(actor_id_self(), message);
+    if (ret != SUCCESS) {
+        err("send message error start point ", ret);
+    }
 }
+
 
 void hello(__attribute__((unused)) void **stateptr,
            __attribute__((unused)) size_t nbytes,
@@ -36,7 +46,7 @@ void hello(__attribute__((unused)) void **stateptr,
     message_t message = get_message(MSG_WAKE_PARENT, sizeof(actor_id_t), (void *) my_id);
     int ret = send_message(parent_id, message);
     if (ret != SUCCESS) {
-        err("send message error ", ret);
+        err("send message error hello", ret);
     }
 }
 
@@ -96,13 +106,13 @@ void start_point(void **stateptr, __attribute__((unused)) size_t nbytes, void *d
     }
 }
 
-void factorial(int n) {
+void factorial() {
     actor_id_t root;
-    int ret = actor_system_create(&root, factorial_role);
+    int ret = actor_system_create(&root, root_role);
     if (ret != SUCCESS) {
         err("system create error ", ret);
     }
-    ans_t *ans = malloc(sizeof(ans_t));
+    /*ans_t *ans = malloc(sizeof(ans_t));
     ans->k_fact = 1;
     ans->k = 0;
     ans->n = n;
@@ -111,20 +121,24 @@ void factorial(int n) {
     ret = send_message(root, message);
     if (ret != SUCCESS) {
         err("send message error start point ", ret);
-    }
+    }*/
     actor_system_join(root);
 }
 
 int main(){
-    int n = 20;
-    act_t acts[] = {hello, start_point, wait_child};
-    role_t *role = malloc(sizeof(role_t));
-    role->nprompts = NPROMTS;
-    role->prompts = acts;
-    factorial_role = role;
-    //while (1) {
-        factorial(n);
-      //  n = (n + 1) % 10;
-    //}
+    scanf("%d", &n);
+    act_t acts_child[] = {hello, start_point, wait_child};
+    act_t acts_root[] = {hello_root, start_point, wait_child};
+    role_t *role_child = malloc(sizeof(role_t));
+    role_child->nprompts = NPROMTS;
+    role_child->prompts = acts_child;
+    factorial_role = role_child;
+    role_t *role_root = malloc(sizeof(role_t));
+    role_root->nprompts = NPROMTS;
+    role_root->prompts = acts_root;
+    root_role = role_root;
+    factorial();
+    free(role_child);
+    free(root_role);
 	return 0;
 }

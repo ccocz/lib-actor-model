@@ -156,12 +156,12 @@ static char *all_tests()
         //fflush(stderr);
     //}
     //mu_run_test(godie);
-    while (1) {
-        a = -1;
-        b = -1;
-        printf("ok\n");
-        mu_run_test(check_comm_order);
-    }
+    //while (1) {
+        //a = -1;
+        //b = -1;
+        //printf("ok\n");
+        //mu_run_test(check_comm_order);
+    //}
     return 0;
 }
 

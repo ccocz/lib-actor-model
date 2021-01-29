@@ -2,12 +2,9 @@
 #include <signal.h>
 #include "pool.h"
 
-//todo: check after malloc
-//todo: syserr
-
 static void *worker(void *);
 static void handle(actor_t *actor, message_t message, pool_t *pool);
-static void handle_godie(actor_t *actor, pool_t *pool);
+static void handle_godie(actor_t *actor);
 static void handle_spawn(actor_t *actor, message_t message, pool_t *pool);
 static actor_t *find_ready_actor(size_t *last_pos,
                                  list_t *actor_list,
@@ -36,16 +33,6 @@ pool_t *new_pool(size_t size) {
 }
 
 int create_threads(pool_t *pool, list_t *actor_list) {
-    sigset_t mask;
-    sigemptyset(&mask);
-    sigaddset(&mask, SIGINT);
-    sigaddset(&mask, SIGKILL); // todo: remove these
-    sigaddset(&mask, SIGTERM);
-    sigaddset(&mask, SIGUSR1);
-    int ret = pthread_sigmask(SIG_BLOCK, &mask, NULL);
-    if (ret != 0) {
-        return FAILURE;
-    }
     size_t size = pool->size;
     pthread_t *threads = malloc(sizeof(pthread_t) * size);
     if (threads == NULL) {
@@ -122,7 +109,7 @@ static void handle(actor_t *actor, message_t message, pool_t *pool) {
     pthread_mutex_unlock(&actor->mutex);
     switch (message.message_type) {
         case MSG_GODIE:
-            handle_godie(actor, pool);
+            handle_godie(actor);
             break;
         case MSG_SPAWN: {
             handle_spawn(actor, message, pool);
@@ -139,30 +126,41 @@ static void handle(actor_t *actor, message_t message, pool_t *pool) {
 }
 
 static void post_handling(actor_t *actor, pool_t *pool) {
-    int empty_queue;
     pthread_mutex_lock(&actor->mutex);
     actor->condition = IDLE;
-    empty_queue = is_empty(actor->mailbox) ? TRUE : FALSE;
-    pthread_mutex_unlock(&actor->mutex);
-    if (!empty_queue) {
+    if (!is_empty(actor->mailbox)) {
+        pthread_mutex_unlock(&actor->mutex);
         pthread_mutex_lock(&pool->mutex);
         pool->work_cond_val = TRUE;
         pthread_cond_broadcast(&pool->work_cond);
         pthread_mutex_unlock(&pool->mutex);
+    } else {
+        int status = actor->status;
+        pthread_mutex_unlock(&actor->mutex);
+        if (status == DEAD) {
+            pthread_mutex_lock(&pool->mutex);
+            pool->alive_actor_cnt--;
+            if (pool->alive_actor_cnt == 0) {
+                pool->keep_alive = FALSE;
+                pthread_cond_broadcast(&pool->destroy_cond); //fixme: wake only one
+            }
+            pthread_mutex_unlock(&pool->mutex);
+        }
     }
 }
 
-static void handle_godie(actor_t *actor, pool_t *pool) {
+
+static void handle_godie(actor_t *actor) {
     pthread_mutex_lock(&actor->mutex);
     actor->status = DEAD;
     pthread_mutex_unlock(&actor->mutex);
-    pthread_mutex_lock(&pool->mutex);
+    /*pthread_mutex_lock(&pool->mutex);
     pool->alive_actor_cnt--;
     if (pool->alive_actor_cnt == 0) {
         pool->keep_alive = FALSE;
         pthread_cond_broadcast(&pool->destroy_cond); //fixme: wake only one
     }
-    pthread_mutex_unlock(&pool->mutex);
+    pthread_mutex_unlock(&pool->mutex);*/
 }
 
 static void handle_spawn(actor_t *actor, message_t message, pool_t *pool) {

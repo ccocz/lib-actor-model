@@ -5,8 +5,6 @@
 
 typedef long message_type_t;
 
-//todo: limits
-
 #define MSG_SPAWN (message_type_t)0x06057a6e
 #define MSG_GODIE (message_type_t)0x60bedead
 #define MSG_HELLO (message_type_t)0x0
@@ -18,9 +16,6 @@ typedef long message_type_t;
 #ifndef CAST_LIMIT
 #define CAST_LIMIT 1048576
 #endif
-
-//#define DEBUG 1
-//#define DEBUG_LIGHT 1
 
 #ifndef POOL_SIZE
 #define POOL_SIZE 3
@@ -60,5 +55,7 @@ int actor_system_create(actor_id_t *actor, role_t *const role);
 void actor_system_join(actor_id_t actor);
 
 int send_message(actor_id_t actor, message_t message);
+
+message_t get_message(message_type_t type, size_t nbytes, void* data);
 
 #endif
