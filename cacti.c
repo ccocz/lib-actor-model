@@ -3,6 +3,7 @@
 #include "list.h"
 #include "actor.h"
 #include "queue.h"
+#include "error.h"
 #include <signal.h>
 #include <stdio.h>
 
@@ -19,14 +20,8 @@ __attribute__((constructor)) void init() {
     sigaddset(&mask, SIGKILL); // todo: remove these
     sigaddset(&mask, SIGTERM);
     sigaddset(&mask, SIGUSR1);
-    int ret = sigprocmask(SIG_BLOCK, &mask, NULL);
-    if (ret != 0) {
-        // halt
-    }
-    ret = pthread_create(&sig_handler, NULL, &sig_wait, NULL);
-    if (ret != 0) {
-        //halt
-    }
+    fatal(sigprocmask(SIG_BLOCK, &mask, NULL));
+    fatal(pthread_create(&sig_handler, NULL, &sig_wait, NULL));
 }
 
  __attribute__((destructor)) void destroy() {
@@ -41,12 +36,9 @@ static void *sig_wait(__attribute__((unused)) void *arg) {
     sigaddset(&mask, SIGKILL);
     sigaddset(&mask, SIGTERM);
     sigaddset(&mask, SIGUSR1);
-    int res, sig;
+    int sig;
     while (TRUE) {
-        res = sigwait(&mask, &sig);
-        if (res != 0) {
-            printf("error");
-        }
+        fatal(sigwait(&mask, &sig));
         if (sig == SIGUSR1) {
             return NULL;
         }
@@ -63,19 +55,22 @@ static void *sig_wait(__attribute__((unused)) void *arg) {
 
 int actor_system_create(actor_id_t *actor, role_t *const role) {
     actor_t *root = new_actor(role, ROOT_ID);
-    if (root == NULL) {
-        return FAILURE;
-    }
     actor_list = new_list(root);
-    if (actor_list == NULL) {
-        return FAILURE;
-    }
     pool = new_pool(POOL_SIZE);
-    if (pool == NULL) {
-        return FAILURE;
-    }
-    int ret = create_threads(pool, actor_list);
-    if (ret != SUCCESS) {
+    int created_threads = create_threads(pool, actor_list);
+    if (root == NULL
+        || actor_list == NULL
+        || pool == NULL
+        || created_threads != SUCCESS) {
+        if (root != NULL) {
+            free(root->mailbox);
+        }
+        if (actor_list != NULL) {
+            free(actor_list->start);
+        }
+        free(root);
+        free(actor_list);
+        free(pool);
         return FAILURE;
     }
     *actor = ROOT_ID;
@@ -84,8 +79,9 @@ int actor_system_create(actor_id_t *actor, role_t *const role) {
 }
 
 void actor_system_join(actor_id_t actor) {
-    (void)actor;
-    // todo: non existing actor id
+    if (find_actor(actor_list, actor) == NULL) {
+        return;
+    }
     if (pool != NULL) {
         pthread_mutex_lock(&pool->mutex);
         if (pool->is_destroyed == TRUE) {
@@ -101,7 +97,7 @@ void actor_system_join(actor_id_t actor) {
 }
 
 int send_message(actor_id_t actor, message_t message) {
-    if (actor_list == NULL) {
+    if (actor_list == NULL) { // fixme
         return SYSTEM_HALTED_ERR;
     }
     actor_t *actor_ptr = find_actor(actor_list, actor);
@@ -126,12 +122,11 @@ int send_message(actor_id_t actor, message_t message) {
 }
 
 actor_id_t actor_id_self() {
-    if (actor_list == NULL) {
+    if (actor_list == NULL) { // fixme
         return SYSTEM_HALTED_ERR;
     }
     actor_t *actor = find_actor_by_thread(actor_list, pthread_self());
     if (actor == NULL) {
-        // error ?
         return FAILURE;
     } else {
         return actor->id;

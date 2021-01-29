@@ -3,7 +3,7 @@
 #include <random>
 
 extern "C" {
-#include "cacti.h"
+#include "../cacti.h"
 }
 
 #define AMPLIFICATION_FACTOR 1

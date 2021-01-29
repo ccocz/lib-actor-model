@@ -154,13 +154,6 @@ static void handle_godie(actor_t *actor) {
     pthread_mutex_lock(&actor->mutex);
     actor->status = DEAD;
     pthread_mutex_unlock(&actor->mutex);
-    /*pthread_mutex_lock(&pool->mutex);
-    pool->alive_actor_cnt--;
-    if (pool->alive_actor_cnt == 0) {
-        pool->keep_alive = FALSE;
-        pthread_cond_broadcast(&pool->destroy_cond); //fixme: wake only one
-    }
-    pthread_mutex_unlock(&pool->mutex);*/
 }
 
 static void handle_spawn(actor_t *actor, message_t message, pool_t *pool) {

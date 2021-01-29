@@ -3,8 +3,10 @@ project (CACTI)
 
 enable_testing()
 
+set (CMAKE_CXX_STANDARD 11)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_FLAGS "-g -Wall -Wextra -pthread")
+set(CMAKE_CXX_FLAGS "-g -Wall -Wextra -pthread")
 
 # http://stackoverflow.com/questions/10555706/
 macro (add_executable _name)
@@ -18,6 +20,7 @@ endmacro()
 add_library(cacti STATIC cacti.c pool.h pool.c actor.h actor.c queue.h queue.c list.h list.c error.h error.c)
 add_executable(macierz macierz.c)
 add_executable(silnia silnia.c)
+add_executable(chaos test/chaos.cpp)
 add_subdirectory(test)
 
 install(TARGETS cacti DESTINATION .)

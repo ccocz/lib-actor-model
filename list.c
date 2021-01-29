@@ -1,11 +1,12 @@
 #include "list.h"
+#include "error.h"
 
 list_t *new_list(actor_t *root) {
     list_t *list = malloc(sizeof(list_t));
     if (list == NULL) {
         return NULL;
     }
-    list->size = 1;
+    list->size = 1; // fixme
     list->start = malloc(sizeof(actor_t*));
     if (list->start == NULL) {
         return NULL;
@@ -31,7 +32,10 @@ actor_id_t add_actor(list_t *list, role_t *role) {
     if (list->pos == list->size) {
         list->size *= 2;
         list->start = realloc(list->start,
-                              list->size * sizeof(actor_t*)); //todo check
+                              list->size * sizeof(actor_t*));
+        if (list->start == NULL) {
+            fatal(FAILURE);
+        }
     }
     actor_id_t id = list->pos++;
     actor_t *actor = new_actor(role, id);
@@ -70,29 +74,3 @@ void free_list(list_t *list) {
     pthread_mutex_destroy(&list->mutex);
     free(list);
 }
-/*
- * static void post_handling(actor_t *actor, pool_t *pool) {
-    pthread_mutex_lock(&actor->mutex);
-    actor->condition = IDLE;
-    if (!is_empty(actor->mailbox)) {
-        pthread_mutex_unlock(&actor->mutex);
-        pthread_mutex_lock(&pool->mutex);
-        pool->work_cond_val = TRUE;
-        pthread_cond_broadcast(&pool->work_cond);
-        pthread_mutex_unlock(&pool->mutex);
-    } else {
-        int status = actor->status;
-        pthread_mutex_unlock(&actor->mutex);
-        if (status == DEAD) {
-            pthread_mutex_lock(&pool->mutex);
-            pool->alive_actor_cnt--;
-            if (pool->alive_actor_cnt == 0) {
-                pool->keep_alive = FALSE;
-                pthread_cond_broadcast(&pool->destroy_cond); //fixme: wake only one
-            }
-            pthread_mutex_unlock(&pool->mutex);
-        }
-    }
-}
-
- */
