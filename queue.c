@@ -14,7 +14,7 @@ queue_t *new_queue() {
 }
 
 void push(queue_t *queue, message_t message) {
-    qnode_t *new_message = malloc(sizeof(qnode_t));
+    qnode_t *new_message = malloc(sizeof(qnode_t)); //fixme
     new_message->message = message;
     new_message->next = NULL;
     if (queue->head == NULL) {

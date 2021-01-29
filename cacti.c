@@ -110,6 +110,7 @@ int send_message(actor_id_t actor, message_t message) {
         return ACTOR_NOT_ALIVE_ERR;
     }
     if (actor_ptr->mailbox->size >= ACTOR_QUEUE_LIMIT) {
+        pthread_mutex_unlock(&actor_ptr->mutex);
         return ACTOR_QUEUE_LIMIT_ERR;
     }
     push(actor_ptr->mailbox, message);
