@@ -112,16 +112,6 @@ void factorial() {
     if (ret != SUCCESS) {
         err("system create error ", ret);
     }
-    /*ans_t *ans = malloc(sizeof(ans_t));
-    ans->k_fact = 1;
-    ans->k = 0;
-    ans->n = n;
-    ans->parent = root;
-    message_t message = get_message(MSG_FACTORIAL, sizeof(ans_t), ans);
-    ret = send_message(root, message);
-    if (ret != SUCCESS) {
-        err("send message error start point ", ret);
-    }*/
     actor_system_join(root);
 }
 

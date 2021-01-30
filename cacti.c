@@ -29,7 +29,7 @@ __attribute__((constructor)) void init() {
     pthread_join(sig_handler, NULL);
 }
 
-static void *sig_wait(__attribute__((unused)) void *arg) {
+static void *sig_wait(__attribute__((unused)) void *arg) { //fixme: no system
     sigset_t mask;
     sigemptyset(&mask);
     sigaddset(&mask, SIGINT);
@@ -42,6 +42,7 @@ static void *sig_wait(__attribute__((unused)) void *arg) {
         if (sig == SIGUSR1) {
             return NULL;
         }
+        fprintf(stderr, "GOT IT");
         pthread_mutex_lock(&pool->mutex);
         pool->is_interrupted = TRUE;
         pthread_mutex_unlock(&pool->mutex);
@@ -86,7 +87,7 @@ void actor_system_join(actor_id_t actor) {
         pthread_mutex_lock(&pool->mutex);
         if (pool->is_destroyed == TRUE) {
             pthread_mutex_unlock(&pool->mutex);
-            return;
+            return; // fixme
         }
         pool->is_destroyed = TRUE;
         pthread_mutex_unlock(&pool->mutex);

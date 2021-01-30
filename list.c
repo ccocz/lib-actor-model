@@ -1,13 +1,15 @@
 #include "list.h"
 #include "error.h"
 
+#define INITIAL_SIZE 1024
+
 list_t *new_list(actor_t *root) {
     list_t *list = malloc(sizeof(list_t));
     if (list == NULL) {
         return NULL;
     }
-    list->size = 1; // fixme
-    list->start = malloc(sizeof(actor_t*));
+    list->size = INITIAL_SIZE;
+    list->start = malloc(sizeof(actor_t*) * list->size);
     if (list->start == NULL) {
         return NULL;
     }
@@ -32,7 +34,7 @@ actor_id_t add_actor(list_t *list, role_t *role) {
     if (list->pos == list->size) {
         list->size *= 2;
         list->start = realloc(list->start,
-                              list->size * sizeof(actor_t*));
+                              sizeof(actor_t*) * list->size);
         if (list->start == NULL) {
             fatal(FAILURE);
         }
