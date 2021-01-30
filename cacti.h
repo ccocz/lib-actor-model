@@ -23,7 +23,7 @@ typedef long message_type_t;
 
 #define ROOT_ID 0
 
-#define SYSTEM_HALTED_ERR -4
+#define NO_ACTIVE_SYSTEM_ERR -4
 #define ACTOR_QUEUE_LIMIT_ERR -3
 #define ACTOR_NOT_PRESENT_ERR -2
 #define ACTOR_NOT_ALIVE_ERR -1

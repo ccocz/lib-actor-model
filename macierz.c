@@ -18,7 +18,7 @@
 #define MILLIS 1000
 
 typedef struct cell {
-    int value;
+    unsigned long long value;
     int timeout;
 } cell_t;
 
@@ -38,13 +38,13 @@ typedef struct root_info {
 
 typedef struct ans {
     int row;
-    int sum;
+    unsigned long long sum;
 } ans_t;
 
 int rows;
 int columns;
 cell_t **grid;
-int *row_sum;
+unsigned long long *row_sum;
 actor_id_t root;
 
 void hello(__attribute__((unused)) void **stateptr,
@@ -194,14 +194,14 @@ void rows_sum(role_t *role) {
 
 int main(){
     scanf("%d %d", &rows, &columns);
-    row_sum = malloc(sizeof(int) * rows); // todo ll
+    row_sum = malloc(sizeof(unsigned long long) * rows);
     grid = malloc(rows * sizeof(cell_t*));
     for (int i = 0; i < rows; i++) {
         grid[i] = malloc(sizeof(cell_t) * columns);
     }
     cell_t next;
     for (int i = 0; i < rows * columns; i++) {
-        scanf("%d %d", &next.value, &next.timeout);
+        scanf("%lld %d", &next.value, &next.timeout);
         grid[i / columns][i % columns] = next;
     }
     act_t acts[] = {hello, wait_columnar, gather_info, wait_to_start, sum_cell, sum_all};
@@ -210,7 +210,7 @@ int main(){
     role->prompts = acts;
     rows_sum(role);
     for (int i = 0; i < rows; i++) {
-        printf("%d\n", row_sum[i]);
+        printf("%lld\n", row_sum[i]);
         free(grid[i]);
     }
     free(grid);
@@ -218,5 +218,3 @@ int main(){
     free(role);
 	return 0;
 }
-
-//todo: millis

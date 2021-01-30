@@ -25,7 +25,7 @@ pool_t *new_pool(size_t size) {
     pool->work_cond_val = FALSE;
     pool->alive_actor_cnt = 1;
     pool->is_interrupted = FALSE;
-    pool->is_destroyed = FALSE;
+    pool->is_joined = FALSE;
     pthread_mutex_init(&pool->mutex, NULL);
     pthread_cond_init(&pool->work_cond, NULL);
     pthread_cond_init(&pool->destroy_cond, NULL);
@@ -142,7 +142,7 @@ static void post_handling(actor_t *actor, pool_t *pool) {
             pool->alive_actor_cnt--;
             if (pool->alive_actor_cnt == 0) {
                 pool->keep_alive = FALSE;
-                pthread_cond_broadcast(&pool->destroy_cond); //fixme: wake only one
+                pthread_cond_broadcast(&pool->destroy_cond);
             }
             pthread_mutex_unlock(&pool->mutex);
         }

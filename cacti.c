@@ -5,11 +5,10 @@
 #include "queue.h"
 #include "error.h"
 #include <signal.h>
-#include <stdio.h>
 
-list_t *actor_list;
-pool_t *pool;
-pthread_t sig_handler;
+static list_t *actor_list;
+static pool_t *pool;
+static pthread_t sig_handler;
 
 static void *sig_wait(__attribute__((unused)) void *arg);
 
@@ -17,8 +16,6 @@ __attribute__((constructor)) void init() {
     sigset_t mask;
     sigemptyset(&mask);
     sigaddset(&mask, SIGINT);
-    sigaddset(&mask, SIGKILL); // todo: remove these
-    sigaddset(&mask, SIGTERM);
     sigaddset(&mask, SIGUSR1);
     fatal(sigprocmask(SIG_BLOCK, &mask, NULL));
     fatal(pthread_create(&sig_handler, NULL, &sig_wait, NULL));
@@ -33,8 +30,6 @@ static void *sig_wait(__attribute__((unused)) void *arg) { //fixme: no system
     sigset_t mask;
     sigemptyset(&mask);
     sigaddset(&mask, SIGINT);
-    sigaddset(&mask, SIGKILL);
-    sigaddset(&mask, SIGTERM);
     sigaddset(&mask, SIGUSR1);
     int sig;
     while (TRUE) {
@@ -42,7 +37,6 @@ static void *sig_wait(__attribute__((unused)) void *arg) { //fixme: no system
         if (sig == SIGUSR1) {
             return NULL;
         }
-        fprintf(stderr, "GOT IT");
         pthread_mutex_lock(&pool->mutex);
         pool->is_interrupted = TRUE;
         pthread_mutex_unlock(&pool->mutex);
@@ -85,11 +79,11 @@ void actor_system_join(actor_id_t actor) {
     }
     if (pool != NULL) {
         pthread_mutex_lock(&pool->mutex);
-        if (pool->is_destroyed == TRUE) {
+        if (pool->is_joined == TRUE) {
             pthread_mutex_unlock(&pool->mutex);
-            return; // fixme
+            return;
         }
-        pool->is_destroyed = TRUE;
+        pool->is_joined = TRUE;
         pthread_mutex_unlock(&pool->mutex);
         destroy_pool(pool);
         pool = NULL;
@@ -98,8 +92,8 @@ void actor_system_join(actor_id_t actor) {
 }
 
 int send_message(actor_id_t actor, message_t message) {
-    if (actor_list == NULL) { // fixme
-        return SYSTEM_HALTED_ERR;
+    if (actor_list == NULL) {
+        return NO_ACTIVE_SYSTEM_ERR;
     }
     actor_t *actor_ptr = find_actor(actor_list, actor);
     if (actor_ptr == NULL) {
@@ -124,8 +118,8 @@ int send_message(actor_id_t actor, message_t message) {
 }
 
 actor_id_t actor_id_self() {
-    if (actor_list == NULL) { // fixme
-        return SYSTEM_HALTED_ERR;
+    if (actor_list == NULL) {
+        return NO_ACTIVE_SYSTEM_ERR;
     }
     actor_t *actor = find_actor_by_thread(actor_list, pthread_self());
     if (actor == NULL) {
